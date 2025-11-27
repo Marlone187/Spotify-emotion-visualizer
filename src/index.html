@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <title>Spotify API Test</title>
+  <script>
+    // Wenn kein Access Token vorhanden → erst zur Auth-Seite
+    if (!sessionStorage.getItem("spotify_access_token")) {
+      window.location = "auth.html";
+    }
+  </script>
+  <script src="https://sdk.scdn.co/spotify-player.js"></script>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #050816;
+      color: #e5e7eb;
+      padding: 1.5rem;
+    }
+    h1 {
+      margin-bottom: .5rem;
+    }
+    button {
+      padding: .5rem 1rem;
+      margin: .25rem;
+      border-radius: .5rem;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    #startBtn { background: #3b82f6; color:#e5e7eb; }
+    #prevBtn  { background: #0f172a; color:#e5e7eb; }
+    #nextBtn  { background: #0f172a; color:#e5e7eb; }
+    .emotion-btn { background:#334155; color:#e5e7eb; }
+    .emotion-btn:hover { background:#475569; }
+    pre {
+      margin-top: 1rem;
+      padding: .75rem;
+      background: #020617;
+      border-radius: .5rem;
+      max-height: 250px;
+      overflow-y: auto;
+      font-size: .85rem;
+      white-space: pre-wrap;
+    }
+
+    /* Now Playing */
+    .now-playing {
+      margin-top: 1.5rem;
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      background: #020617;
+      padding: .75rem;
+      border-radius: .75rem;
+    }
+    .now-playing img {
+      width: 72px;
+      height: 72px;
+      border-radius: .5rem;
+      object-fit: cover;
+      background: #0f172a;
+    }
+    .now-playing-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .track-title {
+      font-weight: 600;
+      margin-bottom: .15rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .track-artist {
+      font-size: .85rem;
+      color: #9ca3af;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: .4rem;
+    }
+    .progress-row {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      font-size: .75rem;
+      color: #9ca3af;
+    }
+    #progressBar {
+      flex: 1;
+      appearance: none;
+      -webkit-appearance: none;
+      height: 4px;
+      border-radius: 999px;
+      background: #1f2937;
+      outline: none;
+    }
+    #progressBar::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      background: #22c55e;
+      cursor: pointer;
+    }
+    #progressBar::-moz-range-thumb {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      background: #22c55e;
+      cursor: pointer;
+      border: none;
+    }
+
+    /* 🔊 Lautstärke – klein unten rechts */
+    .volume-float {
+      position: fixed;
+      right: 1rem;
+      bottom: 1rem;
+      background: rgba(15, 23, 42, 0.95);
+      border-radius: 999px;
+      padding: .35rem .6rem;
+      display: flex;
+      align-items: center;
+      gap: .35rem;
+      box-shadow: 0 10px 30px rgba(0,0,0,.4);
+      font-size: .75rem;
+      z-index: 50;
+    }
+    .volume-float span {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #volumeSlider {
+      width: 80px;
+      appearance: none;
+      -webkit-appearance: none;
+      height: 3px;
+      border-radius: 999px;
+      background: #1f2937;
+      outline: none;
+    }
+    #volumeSlider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: #22c55e;
+      cursor: pointer;
+    }
+    #volumeSlider::-moz-range-thumb {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: #22c55e;
+      cursor: pointer;
+      border: none;
+    }
+  </style>
+</head>
+<body>
+<h1>Spotify Emotion Player</h1>
+
+<button id="prevBtn" disabled>⏮</button>
+<button id="startBtn" disabled>▶️</button>
+<button id="nextBtn" disabled>⏭</button>
+
+<!-- 🎵 Aktueller Song -->
+<div class="now-playing">
+  <img id="trackImage" src="" alt="Cover" />
+  <div class="now-playing-info">
+    <div id="trackTitle" class="track-title">–</div>
+    <div id="trackArtist" class="track-artist">–</div>
+
+    <div class="progress-row">
+      <span id="currentTime">0:00</span>
+      <input
+              type="range"
+              id="progressBar"
+              min="0"
+              max="0"
+              value="0"
+              disabled
+      />
+      <span id="durationTime">0:00</span>
+    </div>
+  </div>
+</div>
+
+<!-- 🔊 Lautstärke – klein unten rechts -->
+<div class="volume-float">
+  <span>🔊</span>
+  <input
+          type="range"
+          id="volumeSlider"
+          min="0"
+          max="100"
+          value="50"
+          disabled
+  />
+  <span id="volumeValue">50%</span>
+</div>
+
+<h2>Emotion (Platzhalter für Emotionserkennung)</h2>
+<button class="emotion-btn" data-emotion="happy">Happy</button>
+<button class="emotion-btn" data-emotion="sad">Sad</button>
+<button class="emotion-btn" data-emotion="neutral">Neutral</button>
+<button class="emotion-btn" data-emotion="angry">Angry</button>
+
+<pre id="log"></pre>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
