@@ -353,7 +353,7 @@ function updateNowPlayingUI(state) {
     }
 }
 
-// Timeline: User-Eingabe → seek
+// Timeline: User-Eingabe
 progressBar?.addEventListener("input", (e) => {
     if (!currentDurationMs) return;
     isSeeking = true;

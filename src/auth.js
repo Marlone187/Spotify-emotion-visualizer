@@ -53,7 +53,7 @@ async function startSpotifyLogin() {
         "https://accounts.spotify.com/authorize?" + params.toString();
 }
 
-// direkt beim Laden starten
+
 startSpotifyLogin().catch((err) => {
     console.error("Fehler beim Starten des Spotify Logins:", err);
 });
