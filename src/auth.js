@@ -1,5 +1,3 @@
-// auth.js – kümmert sich NUR um den Spotify Login per PKCE
-
 const CLIENT_ID = "c1118e23caa84e6497022d00757dc5a0";
 const REDIRECT_URI = "http://127.0.0.1:8000/callback.html";
 
