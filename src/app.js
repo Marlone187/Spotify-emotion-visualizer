@@ -306,9 +306,7 @@ startBtn?.addEventListener("click", async () => {
 });
 
 
-// ===============================
 // Now Playing / Timeline
-// ===============================
 function msToTime(ms) {
     if (!Number.isFinite(ms) || ms < 0) ms = 0;
     const totalSeconds = Math.floor(ms / 1000);
