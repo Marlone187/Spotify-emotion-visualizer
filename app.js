@@ -62,7 +62,7 @@ if (startBtn) {
     if (accessToken) {
         startBtn.disabled = false;
         startBtn.textContent = PLAY_ICON;
-        log("Access Token gefunden, Start-Button freigegeben.");
+        log("Vorhandener Access Token gefunden, Start-Button freigegeben.");
     } else {
         log("Kein Access Token – solltest eigentlich auf auth.html gewesen sein.");
     }
@@ -138,6 +138,10 @@ function scheduleEmotionChange(emotion) {
     );
 }
 
+// ❗ WICHTIG für Kamera / face-api: global machen
+window.scheduleEmotionChange = scheduleEmotionChange;
+
+// Buttons im UI
 document.querySelectorAll("[data-emotion]").forEach((btn) => {
     btn.addEventListener("click", () => {
         const emo = btn.getAttribute("data-emotion");
@@ -240,6 +244,7 @@ async function initPlayerIfNeeded() {
         if (currentId && lastTrackId && currentId !== lastTrackId) {
             log("Songwechsel erkannt:", lastTrackId, "→", currentId);
 
+            // Wenn Emotion geplant → direkt Playlist wechseln
             if (pendingEmotion) {
                 const emoToApply = pendingEmotion;
                 pendingEmotion = null;
@@ -268,9 +273,6 @@ async function initPlayerIfNeeded() {
     await player.connect();
 }
 
-// ===============================
-// START-BUTTON ALS PLAY/PAUSE-TOGGLE
-// ===============================
 // ===============================
 // START-BUTTON ALS PLAY/PAUSE-TOGGLE
 // ===============================
@@ -305,8 +307,9 @@ startBtn?.addEventListener("click", async () => {
     }
 });
 
-
+// ===============================
 // Now Playing / Timeline
+// ===============================
 function msToTime(ms) {
     if (!Number.isFinite(ms) || ms < 0) ms = 0;
     const totalSeconds = Math.floor(ms / 1000);
