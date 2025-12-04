@@ -2,7 +2,7 @@
 // CONFIG
 // ===============================
 const CLIENT_ID = "c1118e23caa84e6497022d00757dc5a0";
-const REDIRECT_URI = "http://127.0.0.1:8000/callback.html";
+const REDIRECT_URI = "https://marlone187.github.io/Spotify-emotion-visualizer/callback.html";
 
 // 🎵 Playlists je Emotion
 const PLAYLISTS = {
