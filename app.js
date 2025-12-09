@@ -43,8 +43,9 @@ let lastTrackId = null;
 let isPlaying = false; // für Play/Pause-Toggle
 let playerReady = false; // ist Player initialisiert?
 
-// Für Enderkennung
+// Für Enderkennung + saubere Übergänge
 let preEndHandledTrackId = null;
+let isSwitchingPlaylist = false;
 
 // UI
 const startBtn = document.getElementById("startBtn");
@@ -169,8 +170,69 @@ function logEmotionStats(stats) {
     );
 }
 
+// ===============================
+// Progress-Loop (einmal zentral)
+// ===============================
+function startProgressLoop() {
+    if (!player) return;
+    if (progressInterval) clearInterval(progressInterval);
+
+    progressInterval = setInterval(async () => {
+        if (!player || isSeeking || isSwitchingPlaylist) return;
+
+        try {
+            const state = await player.getCurrentState();
+            if (!state || !state.track_window || !state.track_window.current_track)
+                return;
+
+            updateNowPlayingUI(state);
+
+            const track = state.track_window.current_track;
+            const currentId = track.id;
+            const position = state.position || 0;
+            const duration = state.duration || track.duration_ms || 0;
+
+            if (!currentId || !duration) return;
+
+            // Songwechsel nur zur Info
+            if (currentId !== lastTrackId) {
+                if (lastTrackId) {
+                    log("🎵 Songwechsel erkannt (Info):", lastTrackId, "→", currentId);
+                }
+                lastTrackId = currentId;
+                preEndHandledTrackId = null; // für neuen Song
+            }
+
+            // Pre-End-Erkennung: wenn weniger als 1.5s übrig sind
+            const remaining = duration - position;
+            if (
+                remaining <= 1500 &&
+                remaining >= 0 &&
+                preEndHandledTrackId !== currentId
+            ) {
+                preEndHandledTrackId = currentId;
+                log(
+                    `⏱ Song endet bald (Rest: ${Math.round(
+                        remaining
+                    )} ms) → Emotion auswerten.`
+                );
+                await evaluateAndMaybeSwitchEmotion("song_end");
+            }
+        } catch (err) {
+            log("getCurrentState Fehler:", err);
+        }
+    }, 500);
+}
+
+// ===============================
 // zentrale Funktion: Emotion auswerten & ggf. Playlist wechseln
+// ===============================
 async function evaluateAndMaybeSwitchEmotion(reason) {
+    if (isSwitchingPlaylist) {
+        log("⚠️ Playlistwechsel läuft bereits – neue Evaluierung übersprungen.");
+        return false;
+    }
+
     log("------------------------------------");
     log("🎯 Emotionsevaluierung, Grund:", reason);
 
@@ -221,7 +283,7 @@ async function evaluateAndMaybeSwitchEmotion(reason) {
         return false; // keine Änderung
     }
 
-    // Jetzt wirklich wechseln
+    // Jetzt wirklich wechseln → Übergang sauber machen
     log(
         "→ Playlistwechsel:",
         currentEmotion,
@@ -231,7 +293,15 @@ async function evaluateAndMaybeSwitchEmotion(reason) {
         reason + ")"
     );
 
-    // Übergang glätten: erst pausieren
+    isSwitchingPlaylist = true;
+
+    // Progress-Loop pausieren, damit kein falsches UI geflasht wird
+    if (progressInterval) {
+        clearInterval(progressInterval);
+        progressInterval = null;
+    }
+
+    // Player pausieren, damit nichts vom "falschen" Track spielt
     if (player) {
         try {
             await player.pause();
@@ -241,8 +311,15 @@ async function evaluateAndMaybeSwitchEmotion(reason) {
         }
     }
 
-    // Danach Playlist wechseln
+    // Playlist setzen
     await applyEmotionNow(chosenEmotion);
+
+    // Nach kurzem Moment Progress-Loop neu starten
+    setTimeout(() => {
+        isSwitchingPlaylist = false;
+        startProgressLoop();
+        log("Progress-Loop nach Playlistwechsel neu gestartet.");
+    }, 400);
 
     return true; // Playlist wurde geändert
 }
@@ -324,52 +401,8 @@ async function initPlayerIfNeeded() {
         isPlaying = true;
         if (startBtn) startBtn.textContent = PAUSE_ICON;
 
-        // 🔥 Live-Progress + Pre-End-Erkennung
-        if (progressInterval) clearInterval(progressInterval);
-        progressInterval = setInterval(async () => {
-            if (!player || isSeeking) return;
-            try {
-                const state = await player.getCurrentState();
-                if (!state || !state.track_window || !state.track_window.current_track)
-                    return;
-
-                updateNowPlayingUI(state);
-
-                const track = state.track_window.current_track;
-                const currentId = track.id;
-                const position = state.position || 0;
-                const duration = state.duration || track.duration_ms || 0;
-
-                if (!currentId || !duration) return;
-
-                // Songwechsel nur zur Info (kein Emotion-Handling mehr hier)
-                if (currentId !== lastTrackId) {
-                    if (lastTrackId) {
-                        log("🎵 Songwechsel erkannt (Info):", lastTrackId, "→", currentId);
-                    }
-                    lastTrackId = currentId;
-                    preEndHandledTrackId = null; // für neuen Song wieder erlauben
-                }
-
-                // Pre-End-Erkennung: wenn weniger als 1.5s übrig sind
-                const remaining = duration - position;
-                if (
-                    remaining <= 1500 &&
-                    remaining >= 0 &&
-                    preEndHandledTrackId !== currentId
-                ) {
-                    preEndHandledTrackId = currentId;
-                    log(
-                        `⏱ Song endet bald (Rest: ${Math.round(
-                            remaining
-                        )} ms) → Emotion auswerten.`
-                    );
-                    await evaluateAndMaybeSwitchEmotion("song_end");
-                }
-            } catch (err) {
-                log("getCurrentState Fehler:", err);
-            }
-        }, 500);
+        // Progress-Loop starten
+        startProgressLoop();
     });
 
     // Player-Fehler
