@@ -135,7 +135,7 @@ function scheduleEmotionChange(emotion) {
     log(
         "Neue Emotion per Button geplant:",
         emotion,
-        "(Wechsel erfolgt beim nächsten Songwechsel, falls keine dominantere Kamera-Emotion)"
+        "(Button hat Vorrang vor Kamera beim nächsten Songwechsel)"
     );
 }
 
@@ -232,7 +232,7 @@ async function initPlayerIfNeeded() {
     });
 
     // Track-Wechsel + Emotion-Auswertung
-    player.addListener("player_state_changed", (state) => {
+    player.addListener("player_state_changed", async (state) => {
         if (!state) return;
 
         const currentTrack = state.track_window.current_track;
@@ -244,45 +244,51 @@ async function initPlayerIfNeeded() {
             log("🎵 Songwechsel:", lastTrackId, "→", currentId);
 
             // --- Emotion-Statistik des vorherigen Songs loggen ---
+            let stats = null;
             if (typeof window.getEmotionStats === "function") {
-                const stats = window.getEmotionStats();
-                if (stats) {
-                    log("📊 Emotionen während des Songs:");
-                    log(
-                        "   😊 Happy:   " + stats.happy + "%\n" +
-                        "   😢 Sad:     " + stats.sad + "%\n" +
-                        "   😐 Neutral: " + stats.neutral + "%\n" +
-                        "   😡 Angry:   " + stats.angry + "%"
-                    );
-                } else {
-                    log("📊 Keine Emotion-Daten für diesen Song (Kamera aus / kein Gesicht).");
-                }
+                stats = window.getEmotionStats();
             }
 
-            // --- dominante Emotion bestimmen (Kamera > Button) ---
+            if (stats) {
+                log("📊 Emotionen während des Songs:");
+                log(
+                    "   😊 Happy:   " + stats.happy + "%\n" +
+                    "   😢 Sad:     " + stats.sad + "%\n" +
+                    "   😐 Neutral: " + stats.neutral + "%\n" +
+                    "   😡 Angry:   " + stats.angry + "%"
+                );
+            } else {
+                log("📊 Keine Emotion-Daten für diesen Song (Kamera aus / kein Gesicht).");
+            }
+
+            // --- Emotion auswählen: 1. Button, 2. Kamera ---
             let chosenEmotion = null;
 
-            // 1) Kamera-Emotion über gesamte Songdauer
-            if (typeof window.getDominantEmotion === "function") {
-                const cameraEmotion = window.getDominantEmotion();
-                if (cameraEmotion && PLAYLISTS[cameraEmotion]) {
-                    log("Dominante Emotion (Kamera, gesamter Song):", cameraEmotion);
-                    chosenEmotion = cameraEmotion;
-                } else {
-                    log("Keine gültige Kamera-Emotion für diesen Song gefunden.");
+            // 1) Button-Emotion hat Priorität
+            if (pendingEmotion && PLAYLISTS[pendingEmotion]) {
+                log("Nutze Button-Emotion (Vorrang):", pendingEmotion);
+                chosenEmotion = pendingEmotion;
+            } else {
+                // 2) Kamera-Emotion über gesamte Songdauer
+                if (typeof window.getDominantEmotion === "function") {
+                    const cameraEmotion = window.getDominantEmotion();
+                    if (cameraEmotion && PLAYLISTS[cameraEmotion]) {
+                        log(
+                            "Dominante Emotion (Kamera, gesamter Song):",
+                            cameraEmotion
+                        );
+                        chosenEmotion = cameraEmotion;
+                    } else {
+                        log("Keine gültige Kamera-Emotion für diesen Song gefunden.");
+                    }
                 }
             }
 
-            // 2) Falls keine Kameraemotion → Button-Emotion verwenden
-            if (!chosenEmotion && pendingEmotion && PLAYLISTS[pendingEmotion]) {
-                log("Nutze Button-Emotion als Fallback:", pendingEmotion);
-                chosenEmotion = pendingEmotion;
-            }
+            // Button ist verbraucht, egal ob genutzt oder nicht
+            pendingEmotion = null;
 
-            // 3) Playlist nur wechseln, wenn Emotion sich ändert
+            // 3) Playlist nur wechseln, wenn sich Emotion wirklich ändert
             if (chosenEmotion) {
-                pendingEmotion = null;
-
                 if (chosenEmotion !== currentEmotion) {
                     log(
                         "🎯 Aktuelle Playlist-Emotion:",
@@ -290,8 +296,18 @@ async function initPlayerIfNeeded() {
                         "→ neue dominante Emotion:",
                         chosenEmotion
                     );
-                    log("→ Playlist wird auf neue Emotion gewechselt.");
-                    applyEmotionNow(chosenEmotion);
+
+                    // Übergang glätten: sofort pausieren,
+                    // damit das erste Lied der alten Playlist nicht hörbar ist
+                    try {
+                        await player.pause();
+                        log("Player vor Playlistwechsel pausiert.");
+                    } catch (e) {
+                        log("Fehler beim Pausieren vor Playlistwechsel:", e);
+                    }
+
+                    // Playlist wechseln (startet sofort in neuer Playlist)
+                    await applyEmotionNow(chosenEmotion);
                 } else {
                     log(
                         "Dominante Emotion entspricht bereits aktueller Emotion:",
@@ -301,7 +317,6 @@ async function initPlayerIfNeeded() {
                 }
             } else {
                 log("Keine Emotion gewählt – Playlist bleibt bei:", currentEmotion);
-                pendingEmotion = null;
             }
 
             // 4) Emotion-Stats IMMER für den neuen Song resetten
