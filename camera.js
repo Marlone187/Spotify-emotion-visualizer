@@ -1,7 +1,9 @@
 // ===============================
 // Kamera-Emotionserkennung mit face-api.js
+// Aggregiert Emotionen über den ganzen Song
 // ===============================
 (function () {
+    const EMOTIONS = ["neutral", "happy", "sad", "angry"];
     const EMOTION_LABELS = {
         neutral: "Neutral",
         happy: "Glücklich",
@@ -9,45 +11,62 @@
         angry: "Wütend",
     };
 
-    // UI-Buttons für die Emotionen (optional, falls vorhanden)
-    const emotionButtons = {};
+    // Aggregierte Scores über die Songdauer
+    let emotionScores = {
+        neutral: 0,
+        happy: 0,
+        sad: 0,
+        angry: 0,
+    };
 
-    let lastAppliedEmotion = null;
-    let currentCandidateEmotion = null;
-    let candidateSince = 0;
-    const STABLE_MS = 3000; // wie lange eine Emotion stabil sein muss, bevor wir Spotify umschalten
+    // Letzte erkannte "Moment-Emotion" (nur für UI, nicht für Steuerung)
+    let lastMomentEmotion = null;
 
-    // aktuell aktiven Button im UI hervorheben
-    function highlightEmotionButton(emotion) {
-        if (!emotionButtons || Object.keys(emotionButtons).length === 0) return;
-
-        Object.keys(emotionButtons).forEach((emo) => {
-            const btn = emotionButtons[emo];
-            if (!btn) return;
-            if (emo === emotion) {
-                btn.classList.add("active-emotion");
-            } else {
-                btn.classList.remove("active-emotion");
-            }
+    // Hilfsfunktionen für Reset und Auswertung
+    function resetEmotionScores() {
+        EMOTIONS.forEach((e) => {
+            emotionScores[e] = 0;
         });
+        lastMomentEmotion = null;
+        console.log("[camera] Emotion-Scores zurückgesetzt.");
     }
 
+    // global verfügbar für app.js
+    window.resetEmotionStats = resetEmotionScores;
+
+    // Dominante Emotion über die gesammelten Scores (für Songende)
+    window.getDominantEmotion = function () {
+        const entries = Object.entries(emotionScores);
+        const [emotion, score] = entries.sort((a, b) => b[1] - a[1])[0] || [];
+        if (!score || score <= 0) return null;
+        return emotion;
+    };
+
+    // Prozentuelle Verteilung für Logging
+    window.getEmotionStats = function () {
+        const total = Object.values(emotionScores).reduce((a, b) => a + b, 0);
+        if (total === 0) return null;
+
+        const stats = {};
+        EMOTIONS.forEach((e) => {
+            stats[e] = Math.round((emotionScores[e] / total) * 100);
+        });
+        return stats;
+    };
+
+    // ===============================
+    // Main: Kamera + Modelle + Loop
+    // ===============================
     window.addEventListener("load", () => {
         const videoEl = document.getElementById("video-feed");
         const emotionTextEl = document.getElementById("emotion-text");
 
-        // Emotion-Buttons einsammeln, falls vorhanden
-        document.querySelectorAll("[data-emotion]").forEach((btn) => {
-            const emo = btn.getAttribute("data-emotion");
-            if (emo) {
-                emotionButtons[emo] = btn;
-            }
-        });
-
+        // Index-Seite kann ohne Kamera laufen → einfach raus
         if (!videoEl || !emotionTextEl) return;
 
         if (!window.faceapi) {
             emotionTextEl.textContent = "face-api konnte nicht geladen werden.";
+            console.error("face-api.js nicht gefunden.");
             return;
         }
 
@@ -60,12 +79,11 @@
                 });
                 videoEl.srcObject = stream;
             } catch (e) {
-                console.error("Kamera-Fehler:", e);
+                console.error("getUserMedia-Fehler:", e);
                 emotionTextEl.textContent = "Kamera blockiert oder nicht verfügbar.";
                 return;
             }
 
-            // Warten bis das Video bereit ist
             await new Promise((resolve) => {
                 if (videoEl.readyState >= 2) resolve();
                 videoEl.onloadeddata = resolve;
@@ -85,8 +103,9 @@
                 return;
             }
 
-            emotionTextEl.textContent = "Modelle geladen. Starte Erkennung…";
+            emotionTextEl.textContent = "Modelle geladen. Erkenne Emotionen…";
 
+            // Detection-Loop
             const detect = async () => {
                 let detections;
 
@@ -108,6 +127,7 @@
 
                 const ex = detections[0].expressions || {};
 
+                // Nur unsere 4 Emotionen
                 const filtered = {
                     neutral: ex.neutral ?? 0,
                     happy: ex.happy ?? 0,
@@ -115,42 +135,30 @@
                     angry: ex.angry ?? 0,
                 };
 
+                // Momentan stärkste Emotion bestimmen
                 const [emotion, prob] = Object.entries(filtered).sort(
                     (a, b) => b[1] - a[1]
                 )[0];
 
-                emotionTextEl.textContent =
-                    `${EMOTION_LABELS[emotion]} (${Math.round(prob * 100)}%)`;
+                lastMomentEmotion = emotion;
 
-                const now = Date.now();
+                // Live-Text für UI
+                emotionTextEl.textContent = `${EMOTION_LABELS[emotion]} (${Math.round(
+                    prob * 100
+                )}%)`;
 
-                // Neue Emotion als Kandidat merken
-                if (emotion !== currentCandidateEmotion) {
-                    currentCandidateEmotion = emotion;
-                    candidateSince = now;
-                } else if (
-                    emotion !== lastAppliedEmotion &&
-                    now - candidateSince >= STABLE_MS
-                ) {
-                    // Emotion ist stabil genug → Spotify-Emotion umschalten
-                    lastAppliedEmotion = emotion;
-
-                    // UI highlight
-                    highlightEmotionButton(emotion);
-
-                    // WICHTIG: app.js stellt scheduleEmotionChange global bereit
-                    if (typeof window.scheduleEmotionChange === "function") {
-                        window.scheduleEmotionChange(emotion);
-                    } else {
-                        console.warn(
-                            "scheduleEmotionChange ist nicht verfügbar – stelle sicher, dass app.js vor camera.js geladen wird."
-                        );
-                    }
-                }
+                // In aggregierte Scores einfließen lassen
+                // (je Frame addieren → am Ende normalisieren wir in getEmotionStats)
+                Object.entries(filtered).forEach(([key, value]) => {
+                    if (!Number.isFinite(value)) return;
+                    emotionScores[key] += value;
+                });
 
                 requestAnimationFrame(detect);
             };
 
+            // Beim Start einmal alles resetten
+            resetEmotionScores();
             detect();
         })();
     });

@@ -2,20 +2,21 @@
 // CONFIG
 // ===============================
 const CLIENT_ID = "c1118e23caa84e6497022d00757dc5a0";
-const REDIRECT_URI = "https://marlone187.github.io/Spotify-emotion-visualizer/callback.html";
+const REDIRECT_URI =
+    "https://marlone187.github.io/Spotify-emotion-visualizer/callback.html";
 
 // 🎵 Playlists je Emotion
 const PLAYLISTS = {
-    happy:   "spotify:playlist:0s4GDB01raiqiNVstNfUXe",
-    sad:     "spotify:playlist:45rWp1I6aL5ruR3WNG5K2H",
+    happy: "spotify:playlist:0s4GDB01raiqiNVstNfUXe",
+    sad: "spotify:playlist:45rWp1I6aL5ruR3WNG5K2H",
     neutral: "spotify:playlist:07LPGPmhNOGYiWIaFhY61V",
-    angry:   "spotify:playlist:55DSMbgOO36tDodpwCykG4",
+    angry: "spotify:playlist:55DSMbgOO36tDodpwCykG4",
 };
 
 // aktuelle Emotion (Startwert)
 let currentEmotion = "happy";
 let currentContextUri = PLAYLISTS[currentEmotion];
-let pendingEmotion = null;
+let pendingEmotion = null; // nur für Buttons
 
 // Logging
 const logEl = document.getElementById("log");
@@ -37,24 +38,24 @@ let accessToken = sessionStorage.getItem("spotify_access_token") || null;
 let player = null;
 let deviceId = null;
 let lastTrackId = null;
-let isPlaying = false;          // für Play/Pause-Toggle
-let playerReady = false;        // ist Player initialisiert?
+let isPlaying = false; // für Play/Pause-Toggle
+let playerReady = false; // ist Player initialisiert?
 
 // UI
-const startBtn      = document.getElementById("startBtn");
-const prevBtn       = document.getElementById("prevBtn");
-const nextBtn       = document.getElementById("nextBtn");
-const trackImage    = document.getElementById("trackImage");
-const trackTitleEl  = document.getElementById("trackTitle");
+const startBtn = document.getElementById("startBtn");
+const prevBtn = document.getElementById("prevBtn");
+const nextBtn = document.getElementById("nextBtn");
+const trackImage = document.getElementById("trackImage");
+const trackTitleEl = document.getElementById("trackTitle");
 const trackArtistEl = document.getElementById("trackArtist");
-const progressBar   = document.getElementById("progressBar");
+const progressBar = document.getElementById("progressBar");
 const currentTimeEl = document.getElementById("currentTime");
-const durationEl    = document.getElementById("durationTime");
-const volumeSlider  = document.getElementById("volumeSlider");
+const durationEl = document.getElementById("durationTime");
+const volumeSlider = document.getElementById("volumeSlider");
 const volumeValueEl = document.getElementById("volumeValue");
 
 // 🔁 Icons für Play/Pause
-const PLAY_ICON  = "▶️";
+const PLAY_ICON = "▶️";
 const PAUSE_ICON = "⏸️";
 
 // Start-Button freischalten (nur auf index.html vorhanden)
@@ -62,7 +63,7 @@ if (startBtn) {
     if (accessToken) {
         startBtn.disabled = false;
         startBtn.textContent = PLAY_ICON;
-        log("Vorhandener Access Token gefunden, Start-Button freigegeben.");
+        log("Access Token gefunden, Start-Button freigegeben.");
     } else {
         log("Kein Access Token – solltest eigentlich auf auth.html gewesen sein.");
     }
@@ -132,16 +133,12 @@ function scheduleEmotionChange(emotion) {
 
     pendingEmotion = emotion;
     log(
-        "Neue Emotion geplant:",
+        "Neue Emotion per Button geplant:",
         emotion,
-        "(Wechsel erfolgt nach dem aktuellen Lied)",
+        "(Wechsel erfolgt beim nächsten Songwechsel)"
     );
 }
 
-// ❗ WICHTIG für Kamera / face-api: global machen
-window.scheduleEmotionChange = scheduleEmotionChange;
-
-// Buttons im UI
 document.querySelectorAll("[data-emotion]").forEach((btn) => {
     btn.addEventListener("click", () => {
         const emo = btn.getAttribute("data-emotion");
@@ -168,7 +165,7 @@ async function initPlayerIfNeeded() {
     log("Initialisiere Spotify Player...");
 
     player = new Spotify.Player({
-        name: "Test Web Player",
+        name: "Emotion Player",
         getOAuthToken: (cb) => cb(accessToken),
         volume: 0.5,
     });
@@ -203,7 +200,7 @@ async function initPlayerIfNeeded() {
                 {
                     method: "PUT",
                     headers: { Authorization: "Bearer " + accessToken },
-                },
+                }
             );
 
             if (shuffleRes.status === 204) {
@@ -234,7 +231,7 @@ async function initPlayerIfNeeded() {
         }, 500);
     });
 
-    // Track-Wechsel + grobe Updates beobachten
+    // Track-Wechsel + Emotion-Auswertung
     player.addListener("player_state_changed", (state) => {
         if (!state) return;
 
@@ -244,11 +241,52 @@ async function initPlayerIfNeeded() {
         if (currentId && lastTrackId && currentId !== lastTrackId) {
             log("Songwechsel erkannt:", lastTrackId, "→", currentId);
 
-            // Wenn Emotion geplant → direkt Playlist wechseln
-            if (pendingEmotion) {
-                const emoToApply = pendingEmotion;
+            // --- Emotion-Statistik des vorherigen Songs loggen ---
+            if (typeof window.getEmotionStats === "function") {
+                const stats = window.getEmotionStats();
+                if (stats) {
+                    log("📊 Emotionen während des Songs:");
+                    log(
+                        `   😊 Happy:   ${stats.happy}%\n` +
+                        `   😢 Sad:     ${stats.sad}%\n` +
+                        `   😐 Neutral: ${stats.neutral}%\n` +
+                        `   😡 Angry:   ${stats.angry}%`
+                    );
+                } else {
+                    log("📊 Keine Emotion-Daten für diesen Song.");
+                }
+            }
+
+            // --- dominante Emotion bestimmen (Kamera > Button) ---
+            let chosenEmotion = null;
+
+            // 1) Kamera-Emotion über gesamte Songdauer
+            if (typeof window.getDominantEmotion === "function") {
+                const cameraEmotion = window.getDominantEmotion();
+                if (cameraEmotion && PLAYLISTS[cameraEmotion]) {
+                    log("Dominante Emotion (Kamera, gesamter Song):", cameraEmotion);
+                    chosenEmotion = cameraEmotion;
+                } else {
+                    log("Keine gültige Kamera-Emotion für diesen Song gefunden.");
+                }
+            }
+
+            // 2) Falls keine Kameraemotion → Button-Emotion verwenden
+            if (!chosenEmotion && pendingEmotion && PLAYLISTS[pendingEmotion]) {
+                log("Nutze Button-Emotion als Fallback:", pendingEmotion);
+                chosenEmotion = pendingEmotion;
+            }
+
+            // 3) Playlist wechseln, wenn eine Emotion gefunden wurde
+            if (chosenEmotion) {
                 pendingEmotion = null;
-                applyEmotionNow(emoToApply);
+                if (typeof window.resetEmotionStats === "function") {
+                    window.resetEmotionStats();
+                }
+                log("→ Wechsle Playlist auf Emotion:", chosenEmotion);
+                applyEmotionNow(chosenEmotion);
+            } else {
+                log("Keine Emotion gewählt – Playlist bleibt gleich.");
             }
         }
 
@@ -258,16 +296,16 @@ async function initPlayerIfNeeded() {
     });
 
     player.addListener("initialization_error", ({ message }) =>
-        log("Init Error:", message),
+        log("Init Error:", message)
     );
     player.addListener("authentication_error", ({ message }) =>
-        log("Auth Error:", message),
+        log("Auth Error:", message)
     );
     player.addListener("account_error", ({ message }) =>
-        log("Account Error:", message),
+        log("Account Error:", message)
     );
     player.addListener("playback_error", ({ message }) =>
-        log("Playback Error:", message),
+        log("Playback Error:", message)
     );
 
     await player.connect();
@@ -380,7 +418,8 @@ progressBar?.addEventListener("change", async (e) => {
 });
 
 // ===============================
-// PREV / NEXT Buttons (mit cleanem Emotion-Wechsel)
+// PREV / NEXT Buttons (Buttons haben jetzt nur Skip-Funktion;
+// Emotion-Wechsel passiert automatisch beim Songwechsel)
 // ===============================
 prevBtn?.addEventListener("click", async () => {
     if (!player) {
@@ -389,15 +428,8 @@ prevBtn?.addEventListener("click", async () => {
     }
 
     try {
-        if (pendingEmotion) {
-            const emo = pendingEmotion;
-            pendingEmotion = null;
-            log("Prev gedrückt & Emotion geplant → wechsle direkt Playlist auf:", emo);
-            await applyEmotionNow(emo);
-        } else {
-            await player.previousTrack();
-            log("Zu vorherigem Track gesprungen.");
-        }
+        await player.previousTrack();
+        log("Zu vorherigem Track gesprungen.");
     } catch (err) {
         log("Prev Fehler:", err);
     }
@@ -410,15 +442,8 @@ nextBtn?.addEventListener("click", async () => {
     }
 
     try {
-        if (pendingEmotion) {
-            const emo = pendingEmotion;
-            pendingEmotion = null;
-            log("Next gedrückt & Emotion geplant → wechsle direkt Playlist auf:", emo);
-            await applyEmotionNow(emo);
-        } else {
-            await player.nextTrack();
-            log("Zum nächsten Track gesprungen.");
-        }
+        await player.nextTrack();
+        log("Zum nächsten Track gesprungen.");
     } catch (err) {
         log("Next Fehler:", err);
     }
@@ -476,7 +501,7 @@ async function applyEmotionNow(emotion) {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify(body),
-        },
+        }
     );
 
     if (res.status === 204) {
@@ -508,7 +533,7 @@ async function startPlayback() {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify(body),
-        },
+        }
     );
 
     if (res.status === 204) {
