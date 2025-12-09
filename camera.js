@@ -19,30 +19,34 @@
         angry: 0,
     };
 
-    // Letzte erkannte "Moment-Emotion" (nur für UI, nicht für Steuerung)
+    // Letzte erkannte "Moment-Emotion" (nur für Debug/UI)
     let lastMomentEmotion = null;
 
-    // Hilfsfunktionen für Reset und Auswertung
+    // ---------- Helper: Reset & Auslesen ----------
+
     function resetEmotionScores() {
         EMOTIONS.forEach((e) => {
             emotionScores[e] = 0;
         });
         lastMomentEmotion = null;
-        console.log("[camera] Emotion-Scores zurückgesetzt.");
+        console.log("[camera] Emotion-Scores zurückgesetzt (neuer Song).");
     }
 
-    // global verfügbar für app.js
+    // global für app.js
     window.resetEmotionStats = resetEmotionScores;
 
-    // Dominante Emotion über die gesammelten Scores (für Songende)
+    // dominante Emotion über den gesamten Song (für Songende)
     window.getDominantEmotion = function () {
         const entries = Object.entries(emotionScores);
-        const [emotion, score] = entries.sort((a, b) => b[1] - a[1])[0] || [];
+        const top = entries.sort((a, b) => b[1] - a[1])[0];
+
+        if (!top) return null;
+        const [emotion, score] = top;
         if (!score || score <= 0) return null;
         return emotion;
     };
 
-    // Prozentuelle Verteilung für Logging
+    // Prozentuale Verteilung der Scores (für Log / Anzeige)
     window.getEmotionStats = function () {
         const total = Object.values(emotionScores).reduce((a, b) => a + b, 0);
         if (total === 0) return null;
@@ -61,7 +65,7 @@
         const videoEl = document.getElementById("video-feed");
         const emotionTextEl = document.getElementById("emotion-text");
 
-        // Index-Seite kann ohne Kamera laufen → einfach raus
+        // Index-Seite kann ohne Kamera laufen → einfach verlassen
         if (!videoEl || !emotionTextEl) return;
 
         if (!window.faceapi) {
@@ -105,6 +109,9 @@
 
             emotionTextEl.textContent = "Modelle geladen. Erkenne Emotionen…";
 
+            // Beim Start alles resetten (erster Song)
+            resetEmotionScores();
+
             // Detection-Loop
             const detect = async () => {
                 let detections;
@@ -127,7 +134,7 @@
 
                 const ex = detections[0].expressions || {};
 
-                // Nur unsere 4 Emotionen
+                // nur unsere 4 Emotionen
                 const filtered = {
                     neutral: ex.neutral ?? 0,
                     happy: ex.happy ?? 0,
@@ -135,30 +142,56 @@
                     angry: ex.angry ?? 0,
                 };
 
-                // Momentan stärkste Emotion bestimmen
+                // Momentan stärkste Emotion
                 const [emotion, prob] = Object.entries(filtered).sort(
                     (a, b) => b[1] - a[1]
                 )[0];
 
                 lastMomentEmotion = emotion;
 
-                // Live-Text für UI
-                emotionTextEl.textContent = `${EMOTION_LABELS[emotion]} (${Math.round(
-                    prob * 100
-                )}%)`;
-
-                // In aggregierte Scores einfließen lassen
-                // (je Frame addieren → am Ende normalisieren wir in getEmotionStats)
+                // Aggregierte Scores für den aktuellen Song erhöhen
                 Object.entries(filtered).forEach(([key, value]) => {
                     if (!Number.isFinite(value)) return;
                     emotionScores[key] += value;
                 });
 
+                // Prozent-Verteilung für den bisherigen Song berechnen
+                const total = Object.values(emotionScores).reduce(
+                    (a, b) => a + b,
+                    0
+                );
+                let statsLine = "";
+
+                if (total > 0) {
+                    const percent = {};
+                    EMOTIONS.forEach((e) => {
+                        percent[e] = Math.round(
+                            (emotionScores[e] / total) * 100
+                        );
+                    });
+
+                    statsLine =
+                        `Song bisher: ` +
+                        `😊 Happy ${percent.happy}% | ` +
+                        `😢 Sad ${percent.sad}% | ` +
+                        `😐 Neutral ${percent.neutral}% | ` +
+                        `😡 Angry ${percent.angry}%`;
+                }
+
+                // UI-Text aktualisieren: Moment + aggregiert
+                const momentLine = `Momentan: ${
+                    EMOTION_LABELS[emotion]
+                } (${Math.round(prob * 100)}%)`;
+
+                if (statsLine) {
+                    emotionTextEl.innerHTML = momentLine + "<br>" + statsLine;
+                } else {
+                    emotionTextEl.textContent = momentLine;
+                }
+
                 requestAnimationFrame(detect);
             };
 
-            // Beim Start einmal alles resetten
-            resetEmotionScores();
             detect();
         })();
     });

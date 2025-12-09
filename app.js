@@ -123,7 +123,7 @@ async function exchangeCodeForToken(code) {
 })();
 
 // ===============================
-// Emotion-Buttons
+// Emotion-Buttons (manuell)
 // ===============================
 function scheduleEmotionChange(emotion) {
     if (!PLAYLISTS[emotion]) {
@@ -135,7 +135,7 @@ function scheduleEmotionChange(emotion) {
     log(
         "Neue Emotion per Button geplant:",
         emotion,
-        "(Wechsel erfolgt beim nächsten Songwechsel)"
+        "(Wechsel erfolgt beim nächsten Songwechsel, falls keine dominantere Kamera-Emotion)"
     );
 }
 
@@ -238,8 +238,10 @@ async function initPlayerIfNeeded() {
         const currentTrack = state.track_window.current_track;
         const currentId = currentTrack && currentTrack.id;
 
+        // Songwechsel erkannt (gilt auch beim Skippen)
         if (currentId && lastTrackId && currentId !== lastTrackId) {
-            log("Songwechsel erkannt:", lastTrackId, "→", currentId);
+            log("====================================");
+            log("🎵 Songwechsel:", lastTrackId, "→", currentId);
 
             // --- Emotion-Statistik des vorherigen Songs loggen ---
             if (typeof window.getEmotionStats === "function") {
@@ -247,13 +249,13 @@ async function initPlayerIfNeeded() {
                 if (stats) {
                     log("📊 Emotionen während des Songs:");
                     log(
-                        `   😊 Happy:   ${stats.happy}%\n` +
-                        `   😢 Sad:     ${stats.sad}%\n` +
-                        `   😐 Neutral: ${stats.neutral}%\n` +
-                        `   😡 Angry:   ${stats.angry}%`
+                        "   😊 Happy:   " + stats.happy + "%\n" +
+                        "   😢 Sad:     " + stats.sad + "%\n" +
+                        "   😐 Neutral: " + stats.neutral + "%\n" +
+                        "   😡 Angry:   " + stats.angry + "%"
                     );
                 } else {
-                    log("📊 Keine Emotion-Daten für diesen Song.");
+                    log("📊 Keine Emotion-Daten für diesen Song (Kamera aus / kein Gesicht).");
                 }
             }
 
@@ -277,17 +279,37 @@ async function initPlayerIfNeeded() {
                 chosenEmotion = pendingEmotion;
             }
 
-            // 3) Playlist wechseln, wenn eine Emotion gefunden wurde
+            // 3) Playlist nur wechseln, wenn Emotion sich ändert
             if (chosenEmotion) {
                 pendingEmotion = null;
-                if (typeof window.resetEmotionStats === "function") {
-                    window.resetEmotionStats();
+
+                if (chosenEmotion !== currentEmotion) {
+                    log(
+                        "🎯 Aktuelle Playlist-Emotion:",
+                        currentEmotion,
+                        "→ neue dominante Emotion:",
+                        chosenEmotion
+                    );
+                    log("→ Playlist wird auf neue Emotion gewechselt.");
+                    applyEmotionNow(chosenEmotion);
+                } else {
+                    log(
+                        "Dominante Emotion entspricht bereits aktueller Emotion:",
+                        currentEmotion,
+                        "→ kein Playlistwechsel."
+                    );
                 }
-                log("→ Wechsle Playlist auf Emotion:", chosenEmotion);
-                applyEmotionNow(chosenEmotion);
             } else {
-                log("Keine Emotion gewählt – Playlist bleibt gleich.");
+                log("Keine Emotion gewählt – Playlist bleibt bei:", currentEmotion);
+                pendingEmotion = null;
             }
+
+            // 4) Emotion-Stats IMMER für den neuen Song resetten
+            if (typeof window.resetEmotionStats === "function") {
+                window.resetEmotionStats();
+            }
+            log("Emotion-Tracking neu gestartet für aktuellen Song.");
+            log("====================================");
         }
 
         if (currentId) lastTrackId = currentId;
@@ -418,8 +440,8 @@ progressBar?.addEventListener("change", async (e) => {
 });
 
 // ===============================
-// PREV / NEXT Buttons (Buttons haben jetzt nur Skip-Funktion;
-// Emotion-Wechsel passiert automatisch beim Songwechsel)
+// PREV / NEXT Buttons
+// (Songwechsel löst automatisch Emotion-Auswertung aus)
 // ===============================
 prevBtn?.addEventListener("click", async () => {
     if (!player) {
