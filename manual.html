@@ -18,7 +18,6 @@
             color: #e5e7eb;
             padding: 2rem;
         }
-
         a { color: #3b82f6; text-decoration: none; }
 
         .row {
@@ -28,14 +27,12 @@
             align-items: start;
             margin-top: 1rem;
         }
-
         .card {
             background: #020617;
             border: 1px solid #0f172a;
             border-radius: 1rem;
             padding: 1.25rem;
         }
-
         .btn {
             background: #0f172a;
             color: #e5e7eb;
@@ -48,16 +45,13 @@
         .btn:disabled { opacity: .6; cursor: not-allowed; }
 
         .muted { color: #9ca3af; }
-
         video {
             width: 100%;
             border-radius: 0.75rem;
             background: #000;
             border: 1px solid #0f172a;
         }
-
         .big { font-size: 1.1rem; font-weight: 800; margin: .25rem 0 .75rem 0; }
-
         .pill {
             display: inline-block;
             padding: .25rem .5rem;
@@ -73,7 +67,6 @@
             width: 96px; height: 96px; object-fit: cover;
             border-radius: 0.75rem; border: 1px solid #0f172a; background: #000;
         }
-
         .controls { display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; margin-top:.75rem; }
         .timeline { display:grid; grid-template-columns:56px 1fr 56px; gap:.75rem; align-items:center; margin-top:.75rem; }
         input[type="range"] { width:100%; }
@@ -150,7 +143,6 @@
 
 <script src="https://sdk.scdn.co/spotify-player.js"></script>
 
-<!-- wie in deinem Projekt -->
 <script defer src="face-api.min.js"></script>
 <script defer src="camera.js"></script>
 <script defer src="app.js"></script>
@@ -158,7 +150,6 @@
 <script>
     const measureBtn = document.getElementById("measureBtn");
     const statusEl = document.getElementById("measureStatus");
-
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
     async function doManualMeasurement() {
@@ -166,19 +157,16 @@
             window.location = "auth.html";
             return;
         }
-
         if (typeof window.resetEmotionStats !== "function" || typeof window.getDominantEmotion !== "function") {
             statusEl.textContent = "Status: Kamera/Emotion-Module nicht bereit (camera.js?)";
             return;
         }
-
         if (typeof window.applyEmotionNow !== "function") {
             statusEl.textContent = "Status: Player nicht bereit (app.js?)";
             return;
         }
 
         measureBtn.disabled = true;
-
         window.resetEmotionStats();
 
         for (let i = 5; i >= 1; i--) {
