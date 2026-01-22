@@ -30,7 +30,7 @@ function base64url(data) {
 async function startSpotifyLogin() {
     const existingToken = sessionStorage.getItem("spotify_access_token");
     if (existingToken) {
-        window.location = "index.html";
+        window.location = "start.html";
         return;
     }
 

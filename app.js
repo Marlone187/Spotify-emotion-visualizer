@@ -1,9 +1,5 @@
-// ===============================
-// CONFIG
-// ===============================
 const CLIENT_ID = "c1118e23caa84e6497022d00757dc5a0";
-const REDIRECT_URI =
-    "https://marlone187.github.io/Spotify-emotion-visualizer/callback.html";
+const REDIRECT_URI = "https://marlone187.github.io/Spotify-emotion-visualizer/callback.html";
 
 // 🎵 Playlists je Emotion
 const PLAYLISTS = {
@@ -123,7 +119,7 @@ async function exchangeCodeForToken(code) {
         await exchangeCodeForToken(code);
         log("Weiterleitung zur App...");
         setTimeout(() => {
-            window.location = "index.html";
+            window.location = "start.html";
         }, 500);
     }
 })();

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="de">
+<head>
+    <meta charset="utf-8" />
+    <title>Manuelle Emotion (Platzhalter)</title>
+
+    <script>
+        if (!sessionStorage.getItem("spotify_access_token")) {
+            window.location = "auth.html";
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #050816;
+            color: #e5e7eb;
+            padding: 2rem;
+        }
+        a { color: #3b82f6; }
+        .box {
+            margin-top: 1rem;
+            background: #020617;
+            border: 1px solid #0f172a;
+            border-radius: 1rem;
+            padding: 1.25rem;
+            max-width: 800px;
+        }
+    </style>
+</head>
+<body>
+<a href="start.html">← Zurück zur Modus-Auswahl</a>
+
+<div class="box">
+    <h1>Manuelle Emotion</h1>
+    <p>
+        Hier kommt später die Funktion rein: Button drücken → 5 Sekunden Emotion machen → passende Playlist spielen.
+    </p>
+    <p><b>Status:</b> Noch nicht implementiert (wie gewünscht).</p>
+</div>
+</body>
+</html>
