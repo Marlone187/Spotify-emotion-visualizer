@@ -1,64 +1,146 @@
 <!doctype html>
+
 <html lang="de">
 <head>
   <meta charset="utf-8" />
   <title>Modus auswählen</title>
 
   <script>
+    // Wenn kein Token → zurück zum Login
     if (!sessionStorage.getItem("spotify_access_token")) {
       window.location = "auth.html";
     }
   </script>
 
   <style>
-    body { font-family: system-ui; background:#050816; color:#e5e7eb; min-height:100vh; display:grid; place-items:center; padding:2rem; }
-    .container { width:min(900px,100%); }
-    h1 { margin:0 0 .5rem 0; font-size:1.8rem; }
-    p { margin:0 0 1.5rem 0; color:#9ca3af; }
-    .grid { display:grid; grid-template-columns:repeat(2,1fr); gap:1rem; }
-    .card-btn { background:#020617; border:1px solid #0f172a; border-radius:1rem; padding:1.5rem; cursor:pointer; text-align:left; color:#e5e7eb; transition:transform .08s ease, border-color .08s ease; min-height:180px; }
-    .card-btn:hover { transform:translateY(-2px); border-color:#3b82f6; }
-    .tag { display:inline-block; padding:.25rem .5rem; border-radius:999px; font-size:.75rem; background:#0f172a; color:#9ca3af; margin-bottom:.75rem; }
-    .card-btn h2 { margin:0 0 .5rem 0; font-size:1.25rem; }
-    .card-btn ul { margin:.75rem 0 0 1rem; color:#9ca3af; }
-    @media (max-width:720px){ .grid{ grid-template-columns:1fr; } }
-    .logout { margin-top:1rem; display:inline-block; color:#9ca3af; text-decoration:underline; cursor:pointer; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #050816;
+      color: #e5e7eb;
+      padding: 2rem;
+      display: grid;
+      place-items: center;
+      min-height: 100vh;
+    }
+
+    .container {
+      width: min(900px, 100%);
+    }
+
+    h1 {
+      margin: 0 0 .5rem 0;
+      font-size: 1.8rem;
+    }
+
+    p {
+      margin: 0 0 1.5rem 0;
+      color: #9ca3af;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem;
+    }
+
+    .card-btn {
+      background: #020617;
+      border: 1px solid #0f172a;
+      border-radius: 1rem;
+      padding: 1.5rem;
+      cursor: pointer;
+      text-align: left;
+      color: #e5e7eb;
+      transition: transform .08s ease, border-color .08s ease;
+      min-height: 180px;
+    }
+
+    .card-btn:hover {
+      transform: translateY(-2px);
+      border-color: #3b82f6;
+    }
+
+    .card-btn h2 {
+      margin: 0 0 .5rem 0;
+      font-size: 1.25rem;
+    }
+
+    .card-btn .tag {
+      display: inline-block;
+      padding: .25rem .5rem;
+      border-radius: 999px;
+      font-size: .75rem;
+      background: #0f172a;
+      color: #9ca3af;
+      margin-bottom: .75rem;
+    }
+
+    .card-btn ul {
+      margin: .75rem 0 0 1rem;
+      color: #9ca3af;
+    }
+
+    @media (max-width: 720px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    .logout {
+      margin-top: 1rem;
+      display: inline-block;
+      color: #9ca3af;
+      text-decoration: underline;
+      cursor: pointer;
+    }
   </style>
+
 </head>
+
 <body>
 <div class="container">
   <h1>Wähle deinen Modus</h1>
   <p>Du bist bei Spotify angemeldet. Wähle, wie Emotionen genutzt werden sollen.</p>
 
+  ```
   <div class="grid">
-    <button class="card-btn" onclick="window.location='manual.html'">
+    <button class="card-btn" onclick="
+    sessionStorage.setItem('selected_mode','manual');
+    window.location='manual.html';
+  ">
       <div class="tag">Manuell</div>
       <h2>Manuelle Emotion</h2>
-      <p>Button drücken → 5 Sekunden Emotion machen → Playlist wählen. (Noch nicht implementiert)</p>
+      <p>Du startest eine Messung per Button und zeigst 5 Sekunden eine Emotion.</p>
       <ul>
-        <li>Manuell starten</li>
-        <li>5 Sekunden messen</li>
-        <li>Playlist bleibt bis zum nächsten Klick</li>
+        <li>Button drücken → 5 Sekunden Emotion machen</li>
+        <li>Danach passende Playlist abspielen</li>
+        <li>Bleibt aktiv bis du erneut drückst</li>
       </ul>
     </button>
 
-    <button class="card-btn" onclick="window.location='index.html'">
+    <button class="card-btn" onclick="
+    sessionStorage.setItem('selected_mode','auto');
+    window.location='index.html';
+  ">
       <div class="tag">Automatisch</div>
       <h2>Automatische Emotion</h2>
-      <p>So wie jetzt: Emotion wird während des Songs getrackt und Playlist beim Wechsel angepasst.</p>
+      <p>Emotion wird während des Songs getrackt und Playlist automatisch gewechselt.</p>
       <ul>
-        <li>Automatische Erkennung</li>
-        <li>Tracking während des Songs</li>
-        <li>Playlist-Wechsel bei Songende/Skip</li>
+        <li>Live-Erkennung</li>
+        <li>Tracking pro Song</li>
+        <li>Automatischer Playlist-Wechsel</li>
       </ul>
     </button>
   </div>
 
   <span class="logout" onclick="
-      sessionStorage.removeItem('spotify_access_token');
-      sessionStorage.removeItem('code_verifier');
-      window.location='auth.html';
-    ">Logout / neu verbinden</span>
+  sessionStorage.removeItem('spotify_access_token');
+  sessionStorage.removeItem('code_verifier');
+  sessionStorage.removeItem('selected_mode');
+  window.location='auth.html';
+">
+  Logout / neu verbinden
+</span>
+  ```
+
 </div>
 </body>
 </html>

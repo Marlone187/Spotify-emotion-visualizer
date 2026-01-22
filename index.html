@@ -1,6 +1,21 @@
 <!doctype html>
 <html lang="de">
 <head>
+  <script>
+    const token = sessionStorage.getItem("spotify_access_token");
+    const mode = sessionStorage.getItem("selected_mode");
+
+    // Wenn nicht eingeloggt → Login-Seite
+    if (!token) {
+      window.location = "auth.html";
+    }
+
+    // Wenn eingeloggt, aber Modus nicht "auto" → Auswahlseite
+    if (token && mode !== "auto") {
+      window.location = "start.html";
+    }
+  </script>
+
   <meta charset="utf-8" />
   <title>Spotify Emotion Player</title>
 
