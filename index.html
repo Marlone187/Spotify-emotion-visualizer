@@ -36,8 +36,9 @@
       /* Standardfarbe (wird per JS geändert) */
       --theme-color: #3b82f6;
       --bg-dark: #050816;
-      --glass-bg: rgba(255, 255, 255, 0.05);
-      --glass-border: rgba(255, 255, 255, 0.1);
+      --glass-bg: rgba(255, 255, 255, 0.08);
+      --glass-border: rgba(255, 255, 255, 0.15);
+      --glow: 0 0 20px var(--theme-color);
     }
 
     * {
@@ -48,7 +49,7 @@
 
     body {
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      background: radial-gradient(circle at 50% 120%, var(--theme-color), var(--bg-dark) 60%);
+      background: radial-gradient(circle at 50% 120%, var(--theme-color), var(--bg-dark) 70%);
       color: #e5e7eb;
       height: 100vh;
       overflow: hidden;
@@ -62,39 +63,44 @@
     /* Hintergrund Visualizer */
     #wave-canvas {
       position: absolute;
-      top: 50%;
+      top: 60%;
       left: 0;
       width: 100%;
-      height: 300px;
-      transform: translateY(-50%);
+      height: 40%;
       z-index: -1;
-      opacity: 0.6;
+      opacity: 0.5;
       pointer-events: none;
     }
 
     /* Oben Links: Home Button */
     .top-nav {
       position: absolute;
-      top: 20px;
-      left: 20px;
+      top: 25px;
+      left: 25px;
       z-index: 10;
     }
     .home-btn {
-      background: var(--theme-color);
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid var(--glass-border);
       color: white;
-      width: 44px;
-      height: 44px;
-      border-radius: 12px;
+      width: 50px;
+      height: 50px;
+      border-radius: 16px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.2rem;
+      font-size: 1.3rem;
       text-decoration: none;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-      transition: transform 0.2s, background 1.5s;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      transition: all 0.3s ease;
     }
     .home-btn:hover {
-      transform: scale(1.05);
+      transform: scale(1.1);
+      background: var(--theme-color);
+      box-shadow: 0 0 15px var(--theme-color);
+      border-color: transparent;
     }
 
     /* Hauptbereich Container */
@@ -105,35 +111,36 @@
       align-items: center;
       justify-content: center;
       width: 100%;
-      max-width: 600px;
+      max-width: 800px; /* Breiter für größere Elemente */
       position: relative;
       z-index: 1;
-      padding-top: 10px;
+      padding-top: 20px;
     }
 
-    /* Kamera Sektion */
+    /* Kamera Sektion - Vergrößert */
     #camera-section {
       display: flex;
       flex-direction: column;
       align-items: center;
-      margin-bottom: 1.5rem;
+      margin-bottom: 2rem;
       position: relative;
     }
 
     .video-wrapper {
       position: relative;
-      padding: 4px;
-      background: rgba(0,0,0,0.3);
-      border-radius: 12px;
-      box-shadow: 0 0 20px var(--theme-color);
+      padding: 6px;
+      background: rgba(0,0,0,0.4);
+      border-radius: 16px;
+      box-shadow: var(--glow);
       transition: box-shadow 1.5s ease;
+      backdrop-filter: blur(5px);
     }
 
     #video-feed {
       display: block;
-      border-radius: 8px;
-      width: 260px;
-      height: 195px;
+      border-radius: 10px;
+      width: 360px;  /* Größer */
+      height: 270px; /* Größer */
       object-fit: cover;
       transform: scaleX(-1); /* Spiegeln */
       background: #000;
@@ -143,9 +150,9 @@
     .emotion-bars {
       display: flex;
       width: 100%;
-      height: 6px;
-      margin-top: 4px;
-      border-radius: 0 0 8px 8px;
+      height: 8px;
+      margin-top: 6px;
+      border-radius: 0 0 10px 10px;
       overflow: hidden;
     }
     .bar { flex: 1; height: 100%; }
@@ -156,19 +163,20 @@
 
     /* Aktueller Emotions-Text */
     #emotion-container {
-      margin-top: 8px;
-      font-size: 0.85rem;
-      background: rgba(0,0,0,0.4);
-      padding: 4px 12px;
-      border-radius: 20px;
+      margin-top: 10px;
+      font-size: 0.95rem;
+      background: rgba(0,0,0,0.5);
+      padding: 6px 16px;
+      border-radius: 99px;
       text-transform: capitalize;
       backdrop-filter: blur(4px);
+      border: 1px solid rgba(255,255,255,0.1);
     }
 
     /* Track Cover & Titel */
     .track-display {
       text-align: center;
-      margin-bottom: 1.5rem;
+      margin-bottom: 2rem;
       width: 100%;
       display: flex;
       flex-direction: column;
@@ -176,141 +184,151 @@
     }
 
     #trackImage {
-      width: 200px;
-      height: 200px;
-      border-radius: 12px;
+      width: 320px;  /* Deutlich größer */
+      height: 320px; /* Deutlich größer */
+      border-radius: 20px;
       object-fit: cover;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-      margin-bottom: 1rem;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+      margin-bottom: 1.5rem;
       background: #1e293b;
-      transition: transform 0.3s ease;
+      transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    #trackImage:hover {
+      transform: scale(1.03);
     }
 
     .track-info h2 {
-      font-size: 1.4rem;
-      margin-bottom: 0.25rem;
-      text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+      font-size: 1.8rem;
+      margin-bottom: 0.5rem;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.5);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
       max-width: 90%;
+      font-weight: 700;
     }
     .track-info p {
-      color: #cbd5e1;
-      font-size: 0.95rem;
+      color: rgba(255,255,255,0.7);
+      font-size: 1.1rem;
     }
 
     /* Player Controls */
     .player-controls-container {
       background: var(--glass-bg);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
       border: 1px solid var(--glass-border);
-      padding: 1.25rem;
-      border-radius: 24px;
+      padding: 1.5rem 2rem;
+      border-radius: 30px;
       width: 90%;
-      max-width: 450px;
-      margin-bottom: 1rem;
+      max-width: 500px;
+      margin-bottom: 1.5rem;
       display: flex;
       flex-direction: column;
-      gap: 1rem;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      gap: 1.2rem;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
     }
 
     .progress-row {
       display: flex;
       align-items: center;
-      gap: 10px;
-      font-size: 0.75rem;
+      gap: 15px;
+      font-size: 0.8rem;
       color: #cbd5e1;
-      font-weight: 500;
+      font-weight: 600;
     }
 
     #progressBar {
       flex: 1;
-      height: 4px;
+      height: 6px;
       -webkit-appearance: none;
       appearance: none;
-      background: rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.1);
       border-radius: 99px;
       cursor: pointer;
+      overflow: hidden;
     }
     #progressBar::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
-      width: 12px;
-      height: 12px;
-      background: var(--theme-color);
-      border-radius: 50%;
-      transition: background 1.5s;
+      width: 0;
+      height: 0;
+      box-shadow: -400px 0 0 400px var(--theme-color); /* Füllt den Balken links */
     }
 
     .buttons-row {
       display: flex;
       justify-content: center;
       align-items: center;
-      gap: 2rem;
+      gap: 2.5rem;
     }
 
     button {
       background: transparent;
       border: none;
-      color: white;
+      color: rgba(255,255,255,0.8);
       cursor: pointer;
-      font-size: 1.4rem;
-      padding: 10px;
-      transition: transform 0.1s, color 0.2s;
+      font-size: 1.5rem;
+      padding: 0;
+      transition: all 0.2s ease;
       display: flex;
       align-items: center;
       justify-content: center;
     }
-    button:hover:not(:disabled) { transform: scale(1.1); color: var(--theme-color); }
-    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    button:hover:not(:disabled) { transform: scale(1.2); color: white; text-shadow: 0 0 10px white;}
+    button:disabled { opacity: 0.3; cursor: not-allowed; }
 
     #startBtn {
-      font-size: 1.8rem;
+      font-size: 2.2rem;
       background: var(--theme-color);
-      width: 56px;
-      height: 56px;
+      width: 70px;
+      height: 70px;
       border-radius: 50%;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-      transition: background 1.5s, transform 0.1s;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.4), 0 0 20px var(--theme-color);
+      color: white;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      border: 2px solid rgba(255,255,255,0.2);
     }
     #startBtn:hover:not(:disabled) {
-      color: white;
-      filter: brightness(1.2);
+      transform: scale(1.1);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 40px var(--theme-color);
+      filter: brightness(1.1);
     }
 
     /* Lautstärke Unten Rechts */
     .volume-container {
       position: fixed;
-      bottom: 25px;
-      right: 25px;
-      background: rgba(0, 0, 0, 0.6);
-      backdrop-filter: blur(10px);
-      padding: 8px 16px;
-      border-radius: 30px;
+      bottom: 30px;
+      right: 30px;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(15px);
+      padding: 12px 20px;
+      border-radius: 40px;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
       border: 1px solid var(--glass-border);
       z-index: 20;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      transition: transform 0.2s;
     }
-    .volume-container i { font-size: 0.9rem; }
+    .volume-container:hover { transform: scale(1.05); }
+    .volume-container i { font-size: 1rem; color: var(--theme-color); }
     .volume-container input {
-      width: 80px;
+      width: 100px;
       height: 4px;
       -webkit-appearance: none;
-      background: rgba(255,255,255,0.3);
+      background: rgba(255,255,255,0.2);
       border-radius: 2px;
       cursor: pointer;
     }
     .volume-container input::-webkit-slider-thumb {
       -webkit-appearance: none;
-      width: 10px;
-      height: 10px;
+      width: 12px;
+      height: 12px;
       background: white;
       border-radius: 50%;
+      box-shadow: 0 0 10px rgba(255,255,255,0.5);
     }
 
     /* Versteckte Elemente für Kompatibilität */
@@ -405,50 +423,92 @@
 
 <!-- UI Animation & Logik -->
 <script>
-  // Wave Animation
+  // --- Wave Animation (Smart Simulation) ---
   const canvas = document.getElementById('wave-canvas');
   const ctx = canvas.getContext('2d');
+  const volumeSlider = document.getElementById('volumeSlider');
+  const progressBar = document.getElementById('progressBar');
+
   let width, height;
+  let lastProgress = 0;
+  let isPlaying = false;
 
   function resize() {
     width = canvas.width = window.innerWidth;
-    height = canvas.height = 300;
+    height = canvas.height = window.innerHeight * 0.5; // Nutze untere Hälfte
   }
   window.addEventListener('resize', resize);
   resize();
 
+  // Prüfen ob Musik läuft (anhand der Progress-Bar Bewegung)
+  setInterval(() => {
+    const currentProgress = parseFloat(progressBar.value || 0);
+    if (currentProgress > lastProgress || (currentProgress === 0 && lastProgress > 0)) {
+      isPlaying = true;
+    } else {
+      // Wenn sich 1 Sekunde nichts bewegt hat, wahrscheinlich Pause
+      isPlaying = false;
+    }
+    lastProgress = currentProgress;
+  }, 1000);
+
   let time = 0;
+
   function animateWave() {
     ctx.clearRect(0, 0, width, height);
+
     const computedStyle = getComputedStyle(document.body);
     const themeColor = computedStyle.getPropertyValue('--theme-color').trim();
 
-    ctx.beginPath();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = themeColor;
+    // Lautstärke als Basis-Amplitude (0 bis 1)
+    const volume = parseInt(volumeSlider.value || 50) / 100;
 
+    // Beat Simulation: Zufällige Spikes wenn Musik läuft
+    let beat = 1;
+    if (isPlaying) {
+      // Simuliert Bass/Beat durch Rauschen und Zeit
+      const fastTime = Date.now() / 100; // Schneller Timer
+      // Simple Rauschfunktion für "zappeln"
+      const noise = Math.sin(fastTime) * Math.cos(fastTime * 2.5);
+      beat = 1 + (Math.abs(noise) * 0.5);
+    } else {
+      beat = 0.2; // Ruhezustand: sehr flache Welle
+    }
+
+    const amplitudeBase = 30 * volume * beat;
+
+    ctx.beginPath();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = themeColor;
+    ctx.lineCap = 'round';
+
+    // Erste Welle (Hauptwelle)
     for (let x = 0; x < width; x++) {
       const y = height / 2 +
-              Math.sin(x * 0.01 + time) * 30 * Math.sin(x * 0.005 + time * 2) +
-              Math.sin(x * 0.02 + time * 3) * 10;
+              Math.sin(x * 0.01 + time) * amplitudeBase * Math.sin(x * 0.005 + time * 2) +
+              Math.sin(x * 0.02 + time * 3) * (amplitudeBase * 0.5);
+
       if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
     }
     ctx.stroke();
 
+    // Zweite Welle (Echo/Geist)
     ctx.beginPath();
-    ctx.strokeStyle = "rgba(255,255,255,0.2)";
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(255,255,255,0.15)";
     for (let x = 0; x < width; x++) {
-      const y = height / 2 + Math.sin(x * 0.015 - time) * 40;
+      const y = height / 2 + Math.sin(x * 0.015 - time * 0.8) * (amplitudeBase * 1.2);
       if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
     }
     ctx.stroke();
 
-    time += 0.05;
+    // Geschwindigkeit abhängig vom Play-Status
+    time += isPlaying ? 0.1 : 0.02;
     requestAnimationFrame(animateWave);
   }
   animateWave();
 
-  // Farbe ändern bei Emotion
+  // Farbe ändern bei Emotion (Observer)
   const emotionTextEl = document.getElementById('emotion-text');
   const observer = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
@@ -456,13 +516,15 @@
       const root = document.documentElement;
 
       if (text.includes('happy') || text.includes('glücklich')) {
-        root.style.setProperty('--theme-color', '#fbbf24'); // Orange/Gelb
+        root.style.setProperty('--theme-color', '#fbbf24'); // Gold/Gelb
       } else if (text.includes('sad') || text.includes('traurig')) {
         root.style.setProperty('--theme-color', '#60a5fa'); // Blau
       } else if (text.includes('angry') || text.includes('wütend')) {
         root.style.setProperty('--theme-color', '#ef4444'); // Rot
       } else if (text.includes('neutral')) {
         root.style.setProperty('--theme-color', '#9ca3af'); // Grau
+      } else if (text.includes('surprised')) {
+        root.style.setProperty('--theme-color', '#d946ef'); // Pink
       }
     });
   });
