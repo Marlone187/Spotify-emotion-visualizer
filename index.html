@@ -36,9 +36,9 @@
       /* Standardfarbe (wird per JS geändert) */
       --theme-color: #3b82f6;
       --bg-dark: #050816;
-      --glass-bg: rgba(255, 255, 255, 0.08);
-      --glass-border: rgba(255, 255, 255, 0.15);
-      --glow: 0 0 20px var(--theme-color);
+      --glass-bg: rgba(20, 20, 30, 0.4); /* Dunkleres Glas für besseren Kontrast */
+      --glass-border: rgba(255, 255, 255, 0.1);
+      --glow: 0 0 30px var(--theme-color);
     }
 
     * {
@@ -49,7 +49,8 @@
 
     body {
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      background: radial-gradient(circle at 50% 120%, var(--theme-color), var(--bg-dark) 70%);
+      /* Hintergrund passt sich der Theme-Farbe stärker an */
+      background: radial-gradient(circle at 50% 120%, var(--theme-color), #000000 80%);
       color: #e5e7eb;
       height: 100vh;
       overflow: hidden;
@@ -63,13 +64,14 @@
     /* Hintergrund Visualizer */
     #wave-canvas {
       position: absolute;
-      top: 60%;
+      top: 50%;
       left: 0;
       width: 100%;
-      height: 40%;
+      height: 50%;
       z-index: -1;
-      opacity: 0.5;
+      opacity: 0.6;
       pointer-events: none;
+      mix-blend-mode: screen;
     }
 
     /* Oben Links: Home Button */
@@ -80,7 +82,7 @@
       z-index: 10;
     }
     .home-btn {
-      background: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.05);
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
       border: 1px solid var(--glass-border);
@@ -93,14 +95,14 @@
       justify-content: center;
       font-size: 1.3rem;
       text-decoration: none;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
       transition: all 0.3s ease;
     }
     .home-btn:hover {
-      transform: scale(1.1);
       background: var(--theme-color);
-      box-shadow: 0 0 15px var(--theme-color);
+      box-shadow: 0 0 20px var(--theme-color);
       border-color: transparent;
+      transform: scale(1.05);
     }
 
     /* Oben Rechts: Test Controls */
@@ -111,7 +113,7 @@
       display: flex;
       gap: 8px;
       z-index: 20;
-      background: rgba(0,0,0,0.2);
+      background: rgba(0,0,0,0.3);
       padding: 8px;
       border-radius: 12px;
       backdrop-filter: blur(5px);
@@ -126,13 +128,12 @@
       color: rgba(255,255,255,0.8);
       border: 1px solid transparent;
       transition: all 0.2s;
-      display: inline-block; /* Reset flex display from general button rule */
+      display: inline-block;
     }
     .manual-controls button:hover {
       background: var(--theme-color);
       color: white;
       transform: scale(1.05);
-      text-shadow: none;
     }
     .manual-controls span {
       font-size: 0.8rem;
@@ -161,61 +162,45 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      margin-bottom: 1.5rem;
+      margin-bottom: 2rem;
       position: relative;
     }
 
     .video-wrapper {
       position: relative;
-      padding: 5px;
-      background: rgba(0,0,0,0.4);
-      border-radius: 14px;
-      box-shadow: var(--glow);
+      padding: 0; /* Kein Padding mehr, clean look */
+      background: transparent;
+      border-radius: 16px;
+      /* Box Shadow leuchtet in Theme-Farbe */
+      box-shadow: 0 10px 40px rgba(0,0,0,0.5), 0 0 20px var(--theme-color);
       transition: box-shadow 1.5s ease;
-      backdrop-filter: blur(5px);
+      overflow: hidden;
     }
 
     #video-feed {
       display: block;
-      border-radius: 10px;
-      width: 280px;  /* Wieder etwas kleiner */
-      height: 210px; /* Wieder etwas kleiner */
+      width: 280px;
+      height: 210px;
       object-fit: cover;
-      transform: scaleX(-1); /* Spiegeln */
+      transform: scaleX(-1);
       background: #000;
+      /* Video etwas abdunkeln damit es sich besser einfügt */
+      filter: brightness(0.9);
     }
 
-    /* Emotions-Farbblöcke */
-    .emotion-bars {
-      display: flex;
+    /* Einzelner Emotions-Balken */
+    .single-emotion-bar {
       width: 100%;
       height: 6px;
-      margin-top: 5px;
-      border-radius: 0 0 10px 10px;
-      overflow: hidden;
-    }
-    .bar { flex: 1; height: 100%; }
-    .bar.happy { background: #fbbf24; }
-    .bar.sad { background: #60a5fa; }
-    .bar.angry { background: #ef4444; }
-    .bar.neutral { background: #9ca3af; }
-
-    /* Aktueller Emotions-Text */
-    #emotion-container {
-      margin-top: 10px;
-      font-size: 0.9rem;
-      background: rgba(0,0,0,0.5);
-      padding: 5px 14px;
-      border-radius: 99px;
-      text-transform: capitalize;
-      backdrop-filter: blur(4px);
-      border: 1px solid rgba(255,255,255,0.1);
+      background: var(--theme-color);
+      box-shadow: 0 0 15px var(--theme-color);
+      transition: background 1.5s ease, box-shadow 1.5s ease;
     }
 
     /* Track Cover & Titel */
     .track-display {
       text-align: center;
-      margin-bottom: 1.5rem;
+      margin-bottom: 2rem;
       width: 100%;
       display: flex;
       flex-direction: column;
@@ -223,12 +208,12 @@
     }
 
     #trackImage {
-      width: 240px;  /* Wieder etwas kleiner */
-      height: 240px; /* Wieder etwas kleiner */
-      border-radius: 16px;
+      width: 250px;
+      height: 250px;
+      border-radius: 20px;
       object-fit: cover;
-      box-shadow: 0 15px 40px rgba(0,0,0,0.6);
-      margin-bottom: 1.2rem;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+      margin-bottom: 1.5rem;
       background: #1e293b;
       transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
@@ -237,49 +222,51 @@
     }
 
     .track-info h2 {
-      font-size: 1.8rem;
+      font-size: 2rem;
       margin-bottom: 0.5rem;
-      text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+      text-shadow: 0 4px 12px rgba(0,0,0,0.6);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
       max-width: 90%;
       font-weight: 700;
+      letter-spacing: -0.5px;
     }
     .track-info p {
       color: rgba(255,255,255,0.7);
       font-size: 1.1rem;
+      font-weight: 500;
     }
 
     /* Player Controls */
     .player-controls-container {
       background: var(--glass-bg);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
+      backdrop-filter: blur(25px);
+      -webkit-backdrop-filter: blur(25px);
       border: 1px solid var(--glass-border);
-      padding: 1.5rem 2rem;
-      border-radius: 30px;
+      padding: 1.5rem 2.5rem;
+      border-radius: 35px;
       width: 90%;
-      max-width: 500px;
+      max-width: 550px;
       margin-bottom: 1.5rem;
       display: flex;
       flex-direction: column;
-      gap: 1.2rem;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+      gap: 1.5rem;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
     }
 
     .progress-row {
       display: flex;
       align-items: center;
       gap: 15px;
-      font-size: 0.8rem;
-      color: #cbd5e1;
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.6);
       font-weight: 600;
     }
 
     #progressBar {
       flex: 1;
-      height: 6px;
+      height: 5px;
       -webkit-appearance: none;
       appearance: none;
       background: rgba(255,255,255,0.1);
@@ -292,47 +279,55 @@
       appearance: none;
       width: 0;
       height: 0;
-      box-shadow: -400px 0 0 400px var(--theme-color); /* Füllt den Balken links */
+      /* Balken füllt sich in Theme-Farbe */
+      box-shadow: -400px 0 0 400px var(--theme-color);
     }
 
     .buttons-row {
       display: flex;
       justify-content: center;
       align-items: center;
-      gap: 2.5rem;
+      gap: 3rem;
     }
 
-    /* Generelle Button Regeln für Player Controls */
     .buttons-row button {
       background: transparent;
       border: none;
-      color: rgba(255,255,255,0.8);
+      color: rgba(255,255,255,0.7);
       cursor: pointer;
-      font-size: 1.5rem;
+      font-size: 1.6rem;
       padding: 0;
-      transition: all 0.2s ease;
+      transition: all 0.3s ease;
       display: flex;
       align-items: center;
       justify-content: center;
     }
-    .buttons-row button:hover:not(:disabled) { transform: scale(1.2); color: white; text-shadow: 0 0 10px white;}
+    .buttons-row button:hover:not(:disabled) {
+      transform: scale(1.15);
+      color: white;
+      text-shadow: 0 0 15px var(--theme-color);
+    }
     .buttons-row button:disabled { opacity: 0.3; cursor: not-allowed; }
 
+    /* NEUER START BUTTON STYLE */
     #startBtn {
-      font-size: 2.2rem;
-      background: var(--theme-color);
-      width: 70px;
-      height: 70px;
+      font-size: 2rem;
+      width: 72px;
+      height: 72px;
       border-radius: 50%;
-      box-shadow: 0 5px 20px rgba(0,0,0,0.4), 0 0 20px var(--theme-color);
-      color: white;
-      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      border: 2px solid rgba(255,255,255,0.2);
+      /* Kein solider Background mehr, sondern Outline/Glass */
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: var(--theme-color); /* Icon Farbe = Theme Farbe */
+      box-shadow: 0 0 20px rgba(0,0,0,0.3);
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
     #startBtn:hover:not(:disabled) {
       transform: scale(1.1);
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 40px var(--theme-color);
-      filter: brightness(1.1);
+      border-color: var(--theme-color);
+      box-shadow: 0 0 30px var(--theme-color), inset 0 0 10px rgba(255,255,255,0.1);
+      color: white;
+      background: var(--theme-color); /* Füllt sich beim Hover */
     }
 
     /* Lautstärke Unten Rechts */
@@ -340,7 +335,7 @@
       position: fixed;
       bottom: 30px;
       right: 30px;
-      background: rgba(0, 0, 0, 0.5);
+      background: rgba(0, 0, 0, 0.4);
       backdrop-filter: blur(15px);
       padding: 12px 20px;
       border-radius: 40px;
@@ -353,7 +348,7 @@
       transition: transform 0.2s;
     }
     .volume-container:hover { transform: scale(1.05); }
-    .volume-container i { font-size: 1rem; color: var(--theme-color); }
+    .volume-container i { font-size: 1rem; color: var(--theme-color); transition: color 1.5s; }
     .volume-container input {
       width: 100px;
       height: 4px;
@@ -371,7 +366,7 @@
       box-shadow: 0 0 10px rgba(255,255,255,0.5);
     }
 
-    /* Versteckte Elemente */
+    /* Versteckte Elemente (Muss da bleiben für Logik) */
     .debug-hidden {
       position: absolute;
       opacity: 0;
@@ -379,6 +374,7 @@
       height: 0;
       width: 0;
       overflow: hidden;
+      display: flex; /* Damit Kinder gerendert werden für Observer */
     }
   </style>
 </head>
@@ -395,7 +391,7 @@
   </a>
 </nav>
 
-<!-- Test Emotion Buttons (Oben Rechts) -->
+<!-- Test Emotion Buttons (Oben Rechts - bleiben für Testzwecke) -->
 <div class="manual-controls">
   <span>Test:</span>
   <button class="emotion-btn" data-emotion="happy">Happy</button>
@@ -411,16 +407,10 @@
   <div id="camera-section">
     <div class="video-wrapper">
       <video id="video-feed" width="320" height="240" autoplay muted playsinline></video>
-      <div class="emotion-bars">
-        <div class="bar angry"></div>
-        <div class="bar sad"></div>
-        <div class="bar neutral"></div>
-        <div class="bar happy"></div>
-      </div>
+      <!-- Einzelner Balken, Farbe durch CSS Var -->
+      <div class="single-emotion-bar"></div>
     </div>
-    <div id="emotion-container">
-      <span id="emotion-text">Warte auf Kamera...</span>
-    </div>
+    <!-- Emotion Text ist jetzt versteckt aber technisch vorhanden -->
   </div>
 
   <!-- Cover & Info -->
@@ -456,8 +446,12 @@
   <span id="volumeValue" style="font-size: 0.75rem; width: 28px; text-align:right;">50%</span>
 </div>
 
-<!-- 5. Versteckte Log Elemente -->
+<!-- 5. Versteckte Logik Elemente -->
 <div class="debug-hidden">
+  <!-- Emotion Text hierher verschoben, damit Logik weiterläuft aber nicht stört -->
+  <div id="emotion-container">
+    <span id="emotion-text">Warte...</span>
+  </div>
   <pre id="log"></pre>
 </div>
 
@@ -520,7 +514,7 @@
       beat = 0.2; // Ruhezustand: sehr flache Welle
     }
 
-    const amplitudeBase = 30 * volume * beat;
+    const amplitudeBase = 40 * volume * beat; // Etwas mehr Amplitude
 
     ctx.beginPath();
     ctx.lineWidth = 3;
@@ -537,18 +531,17 @@
     }
     ctx.stroke();
 
-    // Zweite Welle (Echo/Geist)
+    // Zweite Welle (Echo/Geist) - etwas transparenter
     ctx.beginPath();
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = "rgba(255,255,255,0.15)";
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "rgba(255,255,255,0.1)";
     for (let x = 0; x < width; x++) {
-      const y = height / 2 + Math.sin(x * 0.015 - time * 0.8) * (amplitudeBase * 1.2);
+      const y = height / 2 + Math.sin(x * 0.012 - time * 0.9) * (amplitudeBase * 1.3);
       if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
     }
     ctx.stroke();
 
-    // Geschwindigkeit abhängig vom Play-Status
-    time += isPlaying ? 0.1 : 0.02;
+    time += isPlaying ? 0.08 : 0.02;
     requestAnimationFrame(animateWave);
   }
   animateWave();
@@ -563,7 +556,7 @@
       if (text.includes('happy') || text.includes('glücklich')) {
         root.style.setProperty('--theme-color', '#fbbf24'); // Gold/Gelb
       } else if (text.includes('sad') || text.includes('traurig')) {
-        root.style.setProperty('--theme-color', '#60a5fa'); // Blau
+        root.style.setProperty('--theme-color', '#3b82f6'); // Sattes Blau
       } else if (text.includes('angry') || text.includes('wütend')) {
         root.style.setProperty('--theme-color', '#ef4444'); // Rot
       } else if (text.includes('neutral')) {
