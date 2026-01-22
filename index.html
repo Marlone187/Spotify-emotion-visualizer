@@ -103,6 +103,45 @@
       border-color: transparent;
     }
 
+    /* Oben Rechts: Test Controls */
+    .manual-controls {
+      position: absolute;
+      top: 25px;
+      right: 25px;
+      display: flex;
+      gap: 8px;
+      z-index: 20;
+      background: rgba(0,0,0,0.2);
+      padding: 8px;
+      border-radius: 12px;
+      backdrop-filter: blur(5px);
+      border: 1px solid var(--glass-border);
+    }
+    .manual-controls button {
+      font-size: 0.8rem;
+      padding: 6px 12px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 6px;
+      cursor: pointer;
+      color: rgba(255,255,255,0.8);
+      border: 1px solid transparent;
+      transition: all 0.2s;
+      display: inline-block; /* Reset flex display from general button rule */
+    }
+    .manual-controls button:hover {
+      background: var(--theme-color);
+      color: white;
+      transform: scale(1.05);
+      text-shadow: none;
+    }
+    .manual-controls span {
+      font-size: 0.8rem;
+      color: #aaa;
+      align-self: center;
+      margin-right: 4px;
+      font-weight: 600;
+    }
+
     /* Hauptbereich Container */
     .main-container {
       flex: 1;
@@ -111,26 +150,26 @@
       align-items: center;
       justify-content: center;
       width: 100%;
-      max-width: 800px; /* Breiter für größere Elemente */
+      max-width: 800px;
       position: relative;
       z-index: 1;
-      padding-top: 20px;
+      padding-top: 10px;
     }
 
-    /* Kamera Sektion - Vergrößert */
+    /* Kamera Sektion */
     #camera-section {
       display: flex;
       flex-direction: column;
       align-items: center;
-      margin-bottom: 2rem;
+      margin-bottom: 1.5rem;
       position: relative;
     }
 
     .video-wrapper {
       position: relative;
-      padding: 6px;
+      padding: 5px;
       background: rgba(0,0,0,0.4);
-      border-radius: 16px;
+      border-radius: 14px;
       box-shadow: var(--glow);
       transition: box-shadow 1.5s ease;
       backdrop-filter: blur(5px);
@@ -139,8 +178,8 @@
     #video-feed {
       display: block;
       border-radius: 10px;
-      width: 360px;  /* Größer */
-      height: 270px; /* Größer */
+      width: 280px;  /* Wieder etwas kleiner */
+      height: 210px; /* Wieder etwas kleiner */
       object-fit: cover;
       transform: scaleX(-1); /* Spiegeln */
       background: #000;
@@ -150,8 +189,8 @@
     .emotion-bars {
       display: flex;
       width: 100%;
-      height: 8px;
-      margin-top: 6px;
+      height: 6px;
+      margin-top: 5px;
       border-radius: 0 0 10px 10px;
       overflow: hidden;
     }
@@ -164,9 +203,9 @@
     /* Aktueller Emotions-Text */
     #emotion-container {
       margin-top: 10px;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       background: rgba(0,0,0,0.5);
-      padding: 6px 16px;
+      padding: 5px 14px;
       border-radius: 99px;
       text-transform: capitalize;
       backdrop-filter: blur(4px);
@@ -176,7 +215,7 @@
     /* Track Cover & Titel */
     .track-display {
       text-align: center;
-      margin-bottom: 2rem;
+      margin-bottom: 1.5rem;
       width: 100%;
       display: flex;
       flex-direction: column;
@@ -184,12 +223,12 @@
     }
 
     #trackImage {
-      width: 320px;  /* Deutlich größer */
-      height: 320px; /* Deutlich größer */
-      border-radius: 20px;
+      width: 240px;  /* Wieder etwas kleiner */
+      height: 240px; /* Wieder etwas kleiner */
+      border-radius: 16px;
       object-fit: cover;
-      box-shadow: 0 20px 50px rgba(0,0,0,0.6);
-      margin-bottom: 1.5rem;
+      box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+      margin-bottom: 1.2rem;
       background: #1e293b;
       transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
@@ -263,7 +302,8 @@
       gap: 2.5rem;
     }
 
-    button {
+    /* Generelle Button Regeln für Player Controls */
+    .buttons-row button {
       background: transparent;
       border: none;
       color: rgba(255,255,255,0.8);
@@ -275,8 +315,8 @@
       align-items: center;
       justify-content: center;
     }
-    button:hover:not(:disabled) { transform: scale(1.2); color: white; text-shadow: 0 0 10px white;}
-    button:disabled { opacity: 0.3; cursor: not-allowed; }
+    .buttons-row button:hover:not(:disabled) { transform: scale(1.2); color: white; text-shadow: 0 0 10px white;}
+    .buttons-row button:disabled { opacity: 0.3; cursor: not-allowed; }
 
     #startBtn {
       font-size: 2.2rem;
@@ -331,7 +371,7 @@
       box-shadow: 0 0 10px rgba(255,255,255,0.5);
     }
 
-    /* Versteckte Elemente für Kompatibilität */
+    /* Versteckte Elemente */
     .debug-hidden {
       position: absolute;
       opacity: 0;
@@ -354,6 +394,15 @@
     <i class="fas fa-home"></i>
   </a>
 </nav>
+
+<!-- Test Emotion Buttons (Oben Rechts) -->
+<div class="manual-controls">
+  <span>Test:</span>
+  <button class="emotion-btn" data-emotion="happy">Happy</button>
+  <button class="emotion-btn" data-emotion="sad">Sad</button>
+  <button class="emotion-btn" data-emotion="neutral">Neutral</button>
+  <button class="emotion-btn" data-emotion="angry">Angry</button>
+</div>
 
 <!-- 3. Hauptinhalt -->
 <div class="main-container">
@@ -407,12 +456,8 @@
   <span id="volumeValue" style="font-size: 0.75rem; width: 28px; text-align:right;">50%</span>
 </div>
 
-<!-- 5. Versteckte Elemente (Logik-Erhalt) -->
+<!-- 5. Versteckte Log Elemente -->
 <div class="debug-hidden">
-  <button class="emotion-btn" data-emotion="happy">Happy</button>
-  <button class="emotion-btn" data-emotion="sad">Sad</button>
-  <button class="emotion-btn" data-emotion="neutral">Neutral</button>
-  <button class="emotion-btn" data-emotion="angry">Angry</button>
   <pre id="log"></pre>
 </div>
 
