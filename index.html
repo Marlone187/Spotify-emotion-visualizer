@@ -1,572 +1,368 @@
 <!doctype html>
 <html lang="de">
 <head>
-  <script>
-    const token = sessionStorage.getItem("spotify_access_token");
-    const mode = sessionStorage.getItem("selected_mode");
-
-    // Wenn nicht eingeloggt → Login-Seite
-    if (!token) {
-      window.location = "auth.html";
-    }
-
-    // Wenn eingeloggt, aber Modus nicht "auto" → Auswahlseite
-    if (token && mode !== "auto") {
-      window.location = "start.html";
-    }
-  </script>
-
   <meta charset="utf-8" />
   <title>Spotify Emotion Player</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <script>
-    if (!sessionStorage.getItem("spotify_access_token")) {
-      window.location = "auth.html";
-    }
+    const token = sessionStorage.getItem("spotify_access_token");
+    const mode = sessionStorage.getItem("selected_mode");
+    if (!token) window.location = "auth.html";
+    if (token && mode !== "auto") window.location = "start.html";
   </script>
-
-  <!-- Icons laden -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
   <script src="https://sdk.scdn.co/spotify-player.js"></script>
 
   <style>
-    :root {
-      /* Standardfarbe (wird per JS geändert) */
-      --theme-color: #3b82f6;
-      --bg-dark: #050816;
-      --glass-bg: rgba(20, 20, 30, 0.4); /* Dunkleres Glas für besseren Kontrast */
-      --glass-border: rgba(255, 255, 255, 0.1);
-      --glow: 0 0 30px var(--theme-color);
-    }
-
-    * {
-      box-sizing: border-box;
+    /* --- GRUNDLAGEN & ÜBERGÄNGE --- */
+    body {
       margin: 0;
       padding: 0;
-    }
-
-    body {
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      /* Hintergrund passt sich der Theme-Farbe stärker an */
-      background: radial-gradient(circle at 50% 120%, var(--theme-color), #000000 80%);
-      color: #e5e7eb;
-      height: 100vh;
-      overflow: hidden;
-      transition: background 1.5s ease-in-out;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      color: white;
+      min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: space-between;
-    }
-
-    /* Hintergrund Visualizer */
-    #wave-canvas {
-      position: absolute;
-      top: 50%;
-      left: 0;
-      width: 100%;
-      height: 50%;
-      z-index: -1;
-      opacity: 0.6;
-      pointer-events: none;
-      mix-blend-mode: screen;
-    }
-
-    /* Oben Links: Home Button */
-    .top-nav {
-      position: absolute;
-      top: 25px;
-      left: 25px;
-      z-index: 10;
-    }
-    .home-btn {
-      background: rgba(255, 255, 255, 0.05);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      border: 1px solid var(--glass-border);
-      color: white;
-      width: 50px;
-      height: 50px;
-      border-radius: 16px;
-      display: flex;
-      align-items: center;
       justify-content: center;
-      font-size: 1.3rem;
-      text-decoration: none;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-      transition: all 0.3s ease;
-    }
-    .home-btn:hover {
-      background: var(--theme-color);
-      box-shadow: 0 0 20px var(--theme-color);
-      border-color: transparent;
-      transform: scale(1.05);
+      overflow: hidden; /* Scrollbars vermeiden */
+
+      /* Standard Hintergrund (Neutral) */
+      background: linear-gradient(135deg, #0f172a, #1e293b);
+      background-size: 400% 400%;
+      transition: background 1.5s ease-in-out; /* Weicher Übergang */
     }
 
-    /* Oben Rechts: Test Controls */
-    .manual-controls {
-      position: absolute;
-      top: 25px;
-      right: 25px;
-      display: flex;
-      gap: 8px;
-      z-index: 20;
-      background: rgba(0,0,0,0.3);
-      padding: 8px;
-      border-radius: 12px;
-      backdrop-filter: blur(5px);
-      border: 1px solid var(--glass-border);
+    /* --- EMOTION STIMMUNGEN (Hintergründe) --- */
+    /* Wird per JS gesteuert */
+    body.mood-angry {
+      background: linear-gradient(135deg, #450a0a, #7f1d1d); /* Dunkles Rot/Böse */
     }
-    .manual-controls button {
-      font-size: 0.8rem;
-      padding: 6px 12px;
-      background: rgba(255,255,255,0.1);
-      border-radius: 6px;
-      cursor: pointer;
-      color: rgba(255,255,255,0.8);
-      border: 1px solid transparent;
-      transition: all 0.2s;
-      display: inline-block;
+    body.mood-sad {
+      background: linear-gradient(135deg, #334155, #475569); /* Blass Grau/Blau */
     }
-    .manual-controls button:hover {
-      background: var(--theme-color);
-      color: white;
-      transform: scale(1.05);
+    body.mood-happy {
+      background: linear-gradient(135deg, #ca8a04, #eab308); /* Gelb/Orange/Fröhlich */
     }
-    .manual-controls span {
-      font-size: 0.8rem;
-      color: #aaa;
-      align-self: center;
-      margin-right: 4px;
-      font-weight: 600;
+    body.mood-neutral {
+      background: linear-gradient(135deg, #0f172a, #1e293b); /* Dunkelblau/Neutral */
     }
 
-    /* Hauptbereich Container */
+    /* --- LAYOUT CONTAINER --- */
     .main-container {
-      flex: 1;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
+      gap: 1.5rem;
+      z-index: 10;
       width: 100%;
-      max-width: 800px;
-      position: relative;
-      z-index: 1;
-      padding-top: 10px;
+      max-width: 400px;
+      padding: 20px;
     }
 
-    /* Kamera Sektion */
+    /* --- HEADER / ZURÜCK BUTTON --- */
+    .top-left-nav {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      z-index: 100;
+    }
+    .back-btn {
+      text-decoration: none;
+      color: rgba(255, 255, 255, 0.7);
+      background: rgba(0, 0, 0, 0.3);
+      padding: 10px 15px;
+      border-radius: 30px;
+      font-weight: 600;
+      backdrop-filter: blur(5px);
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .back-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+    }
+
+    /* --- WEBCAM SECTION (OBEN) --- */
     #camera-section {
       display: flex;
       flex-direction: column;
       align-items: center;
-      margin-bottom: 2rem;
-      position: relative;
+      gap: 10px;
     }
-
-    .video-wrapper {
-      position: relative;
-      padding: 0; /* Kein Padding mehr, clean look */
-      background: transparent;
-      border-radius: 16px;
-      /* Box Shadow leuchtet in Theme-Farbe */
-      box-shadow: 0 10px 40px rgba(0,0,0,0.5), 0 0 20px var(--theme-color);
-      transition: box-shadow 1.5s ease;
-      overflow: hidden;
-    }
-
     #video-feed {
-      display: block;
-      width: 280px;
-      height: 210px;
+      width: 180px; /* Kleiner als vorher für modernes Layout */
+      height: 135px;
       object-fit: cover;
-      transform: scaleX(-1);
-      background: #000;
-      /* Video etwas abdunkeln damit es sich besser einfügt */
-      filter: brightness(0.9);
+      border-radius: 20px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     }
-
-    /* Einzelner Emotions-Balken */
-    .single-emotion-bar {
-      width: 100%;
-      height: 6px;
-      background: var(--theme-color);
-      box-shadow: 0 0 15px var(--theme-color);
-      transition: background 1.5s ease, box-shadow 1.5s ease;
-    }
-
-    /* Track Cover & Titel */
-    .track-display {
+    #emotion-container {
+      background: rgba(0, 0, 0, 0.4);
+      padding: 5px 15px;
+      border-radius: 15px;
+      font-size: 0.9rem;
+      backdrop-filter: blur(4px);
       text-align: center;
-      margin-bottom: 2rem;
+    }
+
+    /* --- PLAYER CARD (MITTE) --- */
+    .player-card {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 24px;
+      padding: 25px;
       width: 100%;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
       display: flex;
       flex-direction: column;
       align-items: center;
+      text-align: center;
     }
 
-    #trackImage {
-      width: 250px;
-      height: 250px;
-      border-radius: 20px;
+    .album-art {
+      width: 220px;
+      height: 220px;
+      border-radius: 12px;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.3);
       object-fit: cover;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+      background: #000;
       margin-bottom: 1.5rem;
-      background: #1e293b;
-      transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      transition: transform 0.3s ease;
     }
-    #trackImage:hover {
-      transform: scale(1.03);
+    .album-art:hover {
+      transform: scale(1.02);
     }
 
     .track-info h2 {
-      font-size: 2rem;
-      margin-bottom: 0.5rem;
-      text-shadow: 0 4px 12px rgba(0,0,0,0.6);
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 700;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      max-width: 90%;
-      font-weight: 700;
-      letter-spacing: -0.5px;
+      max-width: 280px;
     }
     .track-info p {
-      color: rgba(255,255,255,0.7);
-      font-size: 1.1rem;
-      font-weight: 500;
+      margin: 5px 0 20px 0;
+      font-size: 0.95rem;
+      color: rgba(255, 255, 255, 0.7);
     }
 
-    /* Player Controls */
-    .player-controls-container {
-      background: var(--glass-bg);
-      backdrop-filter: blur(25px);
-      -webkit-backdrop-filter: blur(25px);
-      border: 1px solid var(--glass-border);
-      padding: 1.5rem 2.5rem;
-      border-radius: 35px;
-      width: 90%;
-      max-width: 550px;
-      margin-bottom: 1.5rem;
+    /* --- CONTROLS & PROGRESS --- */
+    .controls {
       display: flex;
-      flex-direction: column;
+      align-items: center;
+      justify-content: center;
       gap: 1.5rem;
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+      margin-bottom: 1rem;
     }
-
-    .progress-row {
-      display: flex;
-      align-items: center;
-      gap: 15px;
-      font-size: 0.85rem;
-      color: rgba(255,255,255,0.6);
-      font-weight: 600;
-    }
-
-    #progressBar {
-      flex: 1;
-      height: 5px;
-      -webkit-appearance: none;
-      appearance: none;
-      background: rgba(255,255,255,0.1);
-      border-radius: 99px;
-      cursor: pointer;
-      overflow: hidden;
-    }
-    #progressBar::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 0;
-      height: 0;
-      /* Balken füllt sich in Theme-Farbe */
-      box-shadow: -400px 0 0 400px var(--theme-color);
-    }
-
-    .buttons-row {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 3rem;
-    }
-
-    .buttons-row button {
-      background: transparent;
+    .control-btn {
+      background: none;
       border: none;
-      color: rgba(255,255,255,0.7);
-      cursor: pointer;
-      font-size: 1.6rem;
-      padding: 0;
-      transition: all 0.3s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .buttons-row button:hover:not(:disabled) {
-      transform: scale(1.15);
-      color: white;
-      text-shadow: 0 0 15px var(--theme-color);
-    }
-    .buttons-row button:disabled { opacity: 0.3; cursor: not-allowed; }
-
-    /* NEUER START BUTTON STYLE */
-    #startBtn {
       font-size: 2rem;
-      width: 72px;
-      height: 72px;
-      border-radius: 50%;
-      /* Kein solider Background mehr, sondern Outline/Glass */
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.2);
-      color: var(--theme-color); /* Icon Farbe = Theme Farbe */
-      box-shadow: 0 0 20px rgba(0,0,0,0.3);
-      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    }
-    #startBtn:hover:not(:disabled) {
-      transform: scale(1.1);
-      border-color: var(--theme-color);
-      box-shadow: 0 0 30px var(--theme-color), inset 0 0 10px rgba(255,255,255,0.1);
+      cursor: pointer;
       color: white;
-      background: var(--theme-color); /* Füllt sich beim Hover */
+      transition: transform 0.2s, color 0.2s;
+      padding: 0;
+    }
+    .control-btn:disabled {
+      opacity: 0.3;
+      cursor: default;
+    }
+    .control-btn:hover:not(:disabled) {
+      transform: scale(1.1);
+      color: #1db954; /* Spotify Grün beim Hover */
+    }
+    #startBtn {
+      font-size: 2.8rem; /* Play Button größer */
     }
 
-    /* Lautstärke Unten Rechts */
-    .volume-container {
-      position: fixed;
-      bottom: 30px;
-      right: 30px;
-      background: rgba(0, 0, 0, 0.4);
-      backdrop-filter: blur(15px);
-      padding: 12px 20px;
-      border-radius: 40px;
+    .progress-container {
+      width: 100%;
       display: flex;
       align-items: center;
-      gap: 12px;
-      border: 1px solid var(--glass-border);
-      z-index: 20;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-      transition: transform 0.2s;
+      gap: 10px;
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.6);
     }
-    .volume-container:hover { transform: scale(1.05); }
-    .volume-container i { font-size: 1rem; color: var(--theme-color); transition: color 1.5s; }
-    .volume-container input {
-      width: 100px;
-      height: 4px;
+    input[type=range] {
+      flex: 1;
       -webkit-appearance: none;
-      background: rgba(255,255,255,0.2);
+      background: rgba(255, 255, 255, 0.2);
+      height: 4px;
       border-radius: 2px;
-      cursor: pointer;
+      outline: none;
     }
-    .volume-container input::-webkit-slider-thumb {
+    input[type=range]::-webkit-slider-thumb {
       -webkit-appearance: none;
       width: 12px;
       height: 12px;
       background: white;
       border-radius: 50%;
-      box-shadow: 0 0 10px rgba(255,255,255,0.5);
+      cursor: pointer;
     }
 
-    /* Versteckte Elemente (Muss da bleiben für Logik) */
-    .debug-hidden {
-      position: absolute;
-      opacity: 0;
-      pointer-events: none;
-      height: 0;
-      width: 0;
-      overflow: hidden;
-      display: flex; /* Damit Kinder gerendert werden für Observer */
+    /* --- LAUTSTÄRKE (RECHTS UNTEN) --- */
+    .volume-float {
+      position: fixed;
+      bottom: 25px;
+      right: 25px;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(10px);
+      padding: 10px 15px;
+      border-radius: 30px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 100;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+      transition: opacity 0.3s;
     }
+    .volume-float:hover {
+      background: rgba(0, 0, 0, 0.8);
+    }
+    .volume-icon { font-size: 1.2rem; }
+    #volumeSlider { width: 80px; }
+
+    /* --- VERSTECKTE / DEBUG ELEMENTE --- */
+    /* Log verstecken wir visuell, aber lassen es im Code, damit app.js nicht crasht */
+    #log {
+      display: none;
+    }
+    /* Buttons für manuelle Emotion (optional ausgeblendet für cleaneren Look,
+       oder klein unter dem Player anzeigen) */
+    .manual-emotions {
+      margin-top: 1rem;
+      display: flex;
+      gap: 5px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .emotion-btn {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: rgba(255,255,255,0.7);
+      padding: 5px 10px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+    .emotion-btn:hover { background: rgba(255,255,255,0.2); }
+
   </style>
 </head>
 
 <body>
 
-<!-- 1. Hintergrund Canvas -->
-<canvas id="wave-canvas"></canvas>
-
-<!-- 2. Home Button -->
-<nav class="top-nav">
-  <a href="start.html" class="home-btn" title="Zurück zum Start">
-    <i class="fas fa-home"></i>
+<div class="top-left-nav">
+  <a href="start.html" class="back-btn">
+    <span>&#8592;</span> Zurück
   </a>
-</nav>
-
-<!-- Test Emotion Buttons (Oben Rechts - bleiben für Testzwecke) -->
-<div class="manual-controls">
-  <span>Test:</span>
-  <button class="emotion-btn" data-emotion="happy">Happy</button>
-  <button class="emotion-btn" data-emotion="sad">Sad</button>
-  <button class="emotion-btn" data-emotion="neutral">Neutral</button>
-  <button class="emotion-btn" data-emotion="angry">Angry</button>
 </div>
 
-<!-- 3. Hauptinhalt -->
 <div class="main-container">
 
-  <!-- Kamera Bereich -->
   <div id="camera-section">
-    <div class="video-wrapper">
-      <video id="video-feed" width="320" height="240" autoplay muted playsinline></video>
-      <!-- Einzelner Balken, Farbe durch CSS Var -->
-      <div class="single-emotion-bar"></div>
+    <video id="video-feed" width="320" height="240" autoplay muted playsinline></video>
+    <div id="emotion-container">
+      Status: <span id="emotion-text" style="font-weight:700; color:#fff;">Warte...</span>
     </div>
-    <!-- Emotion Text ist jetzt versteckt aber technisch vorhanden -->
   </div>
 
-  <!-- Cover & Info -->
-  <div class="track-display">
-    <img id="trackImage" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Cover" />
+  <div class="player-card">
+
+    <img id="trackImage" class="album-art" src="" alt="" />
+
     <div class="track-info">
-      <h2 id="trackTitle">Nicht verbunden</h2>
-      <p id="trackArtist">–</p>
+      <h2 id="trackTitle">Songtitel laden...</h2>
+      <p id="trackArtist">Interpret</p>
     </div>
-  </div>
 
-  <!-- Player Controls -->
-  <div class="player-controls-container">
-    <div class="progress-row">
+    <div class="controls">
+      <button id="prevBtn" class="control-btn" disabled>&#9194;</button>
+      <button id="startBtn" class="control-btn" disabled>&#9654;</button> <button id="nextBtn" class="control-btn" disabled>&#9193;</button>
+    </div>
+
+    <div class="progress-container">
       <span id="currentTime">0:00</span>
       <input type="range" id="progressBar" min="0" max="0" value="0" disabled />
       <span id="durationTime">0:00</span>
     </div>
 
-    <div class="buttons-row">
-      <button id="prevBtn" disabled><i class="fas fa-step-backward"></i></button>
-      <button id="startBtn" disabled><i class="fas fa-play"></i></button>
-      <button id="nextBtn" disabled><i class="fas fa-step-forward"></i></button>
+    <div class="manual-emotions">
+      <button class="emotion-btn" data-emotion="happy">Happy</button>
+      <button class="emotion-btn" data-emotion="sad">Sad</button>
+      <button class="emotion-btn" data-emotion="angry">Angry</button>
+      <button class="emotion-btn" data-emotion="neutral">Neutral</button>
     </div>
   </div>
 
 </div>
 
-<!-- 4. Lautstärke -->
-<div class="volume-container">
-  <i class="fas fa-volume-up"></i>
+<div class="volume-float">
+  <span class="volume-icon">🔊</span>
   <input type="range" id="volumeSlider" min="0" max="100" value="50" disabled />
-  <span id="volumeValue" style="font-size: 0.75rem; width: 28px; text-align:right;">50%</span>
+  <span id="volumeValue" style="width: 30px; text-align:right; font-size:0.8rem;">50%</span>
 </div>
 
-<!-- 5. Versteckte Logik Elemente -->
-<div class="debug-hidden">
-  <!-- Emotion Text hierher verschoben, damit Logik weiterläuft aber nicht stört -->
-  <div id="emotion-container">
-    <span id="emotion-text">Warte...</span>
-  </div>
-  <pre id="log"></pre>
-</div>
+<pre id="log"></pre>
 
-<!-- Scripts -->
 <script src="face-api.min.js"></script>
 <script src="camera.js"></script>
 <script type="module" src="app.js"></script>
 
-<!-- UI Animation & Logik -->
 <script>
-  // --- Wave Animation (Smart Simulation) ---
-  const canvas = document.getElementById('wave-canvas');
-  const ctx = canvas.getContext('2d');
-  const volumeSlider = document.getElementById('volumeSlider');
-  const progressBar = document.getElementById('progressBar');
+  document.addEventListener("DOMContentLoaded", () => {
+    const emotionTextEl = document.getElementById("emotion-text");
+    const bodyEl = document.body;
 
-  let width, height;
-  let lastProgress = 0;
-  let isPlaying = false;
+    // Funktion zum Setzen der Hintergrundklasse
+    function updateBackgroundColor(emotionString) {
+      const text = emotionString.toLowerCase();
 
-  function resize() {
-    width = canvas.width = window.innerWidth;
-    height = canvas.height = window.innerHeight * 0.5; // Nutze untere Hälfte
-  }
-  window.addEventListener('resize', resize);
-  resize();
+      // Alle alten Mood-Klassen entfernen
+      bodyEl.classList.remove("mood-angry", "mood-sad", "mood-happy", "mood-neutral");
 
-  // Prüfen ob Musik läuft (anhand der Progress-Bar Bewegung)
-  setInterval(() => {
-    const currentProgress = parseFloat(progressBar.value || 0);
-    if (currentProgress > lastProgress || (currentProgress === 0 && lastProgress > 0)) {
-      isPlaying = true;
-    } else {
-      // Wenn sich 1 Sekunde nichts bewegt hat, wahrscheinlich Pause
-      isPlaying = false;
-    }
-    lastProgress = currentProgress;
-  }, 1000);
-
-  let time = 0;
-
-  function animateWave() {
-    ctx.clearRect(0, 0, width, height);
-
-    const computedStyle = getComputedStyle(document.body);
-    const themeColor = computedStyle.getPropertyValue('--theme-color').trim();
-
-    // Lautstärke als Basis-Amplitude (0 bis 1)
-    const volume = parseInt(volumeSlider.value || 50) / 100;
-
-    // Beat Simulation: Zufällige Spikes wenn Musik läuft
-    let beat = 1;
-    if (isPlaying) {
-      // Simuliert Bass/Beat durch Rauschen und Zeit
-      const fastTime = Date.now() / 100; // Schneller Timer
-      // Simple Rauschfunktion für "zappeln"
-      const noise = Math.sin(fastTime) * Math.cos(fastTime * 2.5);
-      beat = 1 + (Math.abs(noise) * 0.5);
-    } else {
-      beat = 0.2; // Ruhezustand: sehr flache Welle
-    }
-
-    const amplitudeBase = 40 * volume * beat; // Etwas mehr Amplitude
-
-    ctx.beginPath();
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = themeColor;
-    ctx.lineCap = 'round';
-
-    // Erste Welle (Hauptwelle)
-    for (let x = 0; x < width; x++) {
-      const y = height / 2 +
-              Math.sin(x * 0.01 + time) * amplitudeBase * Math.sin(x * 0.005 + time * 2) +
-              Math.sin(x * 0.02 + time * 3) * (amplitudeBase * 0.5);
-
-      if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-
-    // Zweite Welle (Echo/Geist) - etwas transparenter
-    ctx.beginPath();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = "rgba(255,255,255,0.1)";
-    for (let x = 0; x < width; x++) {
-      const y = height / 2 + Math.sin(x * 0.012 - time * 0.9) * (amplitudeBase * 1.3);
-      if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-
-    time += isPlaying ? 0.08 : 0.02;
-    requestAnimationFrame(animateWave);
-  }
-  animateWave();
-
-  // Farbe ändern bei Emotion (Observer)
-  const emotionTextEl = document.getElementById('emotion-text');
-  const observer = new MutationObserver((mutations) => {
-    mutations.forEach((mutation) => {
-      const text = mutation.target.textContent.toLowerCase();
-      const root = document.documentElement;
-
-      if (text.includes('happy') || text.includes('glücklich')) {
-        root.style.setProperty('--theme-color', '#fbbf24'); // Gold/Gelb
-      } else if (text.includes('sad') || text.includes('traurig')) {
-        root.style.setProperty('--theme-color', '#3b82f6'); // Sattes Blau
-      } else if (text.includes('angry') || text.includes('wütend')) {
-        root.style.setProperty('--theme-color', '#ef4444'); // Rot
-      } else if (text.includes('neutral')) {
-        root.style.setProperty('--theme-color', '#9ca3af'); // Grau
-      } else if (text.includes('surprised')) {
-        root.style.setProperty('--theme-color', '#d946ef'); // Pink
+      // Neue Klasse basierend auf Textinhalt setzen
+      if (text.includes("angry") || text.includes("wütend") || text.includes("angry")) {
+        bodyEl.classList.add("mood-angry");
       }
+      else if (text.includes("sad") || text.includes("traurig") || text.includes("fear")) {
+        bodyEl.classList.add("mood-sad");
+      }
+      else if (text.includes("happy") || text.includes("glücklich") || text.includes("surprise")) {
+        bodyEl.classList.add("mood-happy");
+      }
+      else {
+        bodyEl.classList.add("mood-neutral");
+      }
+    }
+
+    // Beobachter (MutationObserver), der feuert, wenn sich der Text im <span> ändert
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === "childList" || mutation.type === "characterData") {
+          updateBackgroundColor(emotionTextEl.innerText);
+        }
+      });
     });
+
+    // Start der Beobachtung
+    if (emotionTextEl) {
+      observer.observe(emotionTextEl, {
+        subtree: true,
+        childList: true,
+        characterData: true
+      });
+    }
   });
-  observer.observe(emotionTextEl, { characterData: true, subtree: true, childList: true });
 </script>
 
 </body>
