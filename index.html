@@ -10,308 +10,397 @@
     const mode = sessionStorage.getItem("selected_mode");
     if (!token) window.location = "auth.html";
     if (token && mode !== "auto") window.location = "start.html";
+    if (!sessionStorage.getItem("spotify_access_token")) window.location = "auth.html";
   </script>
 
   <script src="https://sdk.scdn.co/spotify-player.js"></script>
 
   <style>
-    /* --- GRUNDLAGEN & ÜBERGÄNGE --- */
+    /* --- CSS VARIABLEN FÜR DYNAMISCHE VIBES --- */
+    :root {
+      /* Standard (Neutral) */
+      --bg-gradient: linear-gradient(135deg, #1e293b, #0f172a);
+      --card-bg: rgba(255, 255, 255, 0.05);
+      --card-border: rgba(255, 255, 255, 0.1);
+      --text-color: #e2e8f0;
+      --accent-color: #94a3b8; /* Helles Grau/Blau */
+      --accent-glow: 0 0 15px rgba(148, 163, 184, 0.3);
+      --font-family: 'Segoe UI', system-ui, sans-serif;
+      --title-weight: 600;
+
+      /* Balken Farben */
+      --bar-happy: #fbbf24; /* Amber */
+      --bar-sad: #60a5fa; /* Blue */
+      --bar-angry: #f87171; /* Red */
+      --bar-neutral: #9ca3af; /* Gray */
+    }
+
+    /* HAPPY VIBE */
+    body.mood-happy {
+      --bg-gradient: linear-gradient(135deg, #f59e0b, #d97706, #b45309);
+      --card-bg: rgba(255, 255, 255, 0.15);
+      --card-border: rgba(255, 255, 255, 0.3);
+      --text-color: #fffbeb;
+      --accent-color: #fbbf24; /* Leuchtendes Gelb/Orange */
+      --accent-glow: 0 0 25px rgba(251, 191, 36, 0.6);
+      --font-family: 'Comic Sans MS', 'Chalkboard SE', sans-serif; /* Verspielter */
+      --title-weight: 700;
+    }
+
+    /* SAD VIBE */
+    body.mood-sad {
+      --bg-gradient: linear-gradient(135deg, #3b82f6, #1e40af, #172554);
+      --card-bg: rgba(0, 0, 0, 0.2);
+      --card-border: rgba(255, 255, 255, 0.1);
+      --text-color: #dbeafe;
+      --accent-color: #60a5fa; /* Kühles Blau */
+      --accent-glow: 0 0 15px rgba(96, 165, 250, 0.4);
+      --font-family: 'Georgia', serif; /* Ruhiger, melancholischer */
+      --title-weight: 500;
+    }
+
+    /* ANGRY VIBE */
+    body.mood-angry {
+      --bg-gradient: linear-gradient(135deg, #ef4444, #b91c1c, #7f1d1d);
+      --card-bg: rgba(0, 0, 0, 0.3);
+      --card-border: rgba(239, 68, 68, 0.3);
+      --text-color: #fee2e2;
+      --accent-color: #f87171; /* Aggressives Rot */
+      --accent-glow: 0 0 30px rgba(248, 113, 113, 0.7);
+      --font-family: 'Impact', sans-serif; /* Laut, kantig */
+      --title-weight: 800;
+      text-transform: uppercase;
+    }
+
+    /* NEUTRAL VIBE (Explizit) */
+    body.mood-neutral {
+      /* Gleiche wie :root Default */
+      --bg-gradient: linear-gradient(135deg, #1e293b, #0f172a);
+      --card-bg: rgba(255, 255, 255, 0.05);
+      --card-border: rgba(255, 255, 255, 0.1);
+      --text-color: #e2e8f0;
+      --accent-color: #94a3b8;
+      --accent-glow: 0 0 15px rgba(148, 163, 184, 0.3);
+      --font-family: 'Segoe UI', system-ui, sans-serif;
+      --title-weight: 600;
+    }
+
+    /* --- GRUNDLAYOUT & ÜBERGÄNGE --- */
     body {
       margin: 0;
       padding: 0;
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      color: white;
+      font-family: var(--font-family);
+      color: var(--text-color);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      overflow: hidden; /* Scrollbars vermeiden */
+      justify-content: flex-start; /* Startet oben */
+      overflow-x: hidden;
 
-      /* Standard Hintergrund (Neutral) */
-      background: linear-gradient(135deg, #0f172a, #1e293b);
+      background: var(--bg-gradient);
       background-size: 400% 400%;
-      transition: background 1.5s ease-in-out; /* Weicher Übergang */
+      animation: gradientBG 15s ease infinite; /* Leichte Bewegung im Hintergrund */
+      transition: all 1s ease-in-out; /* Weicher Übergang für ALLE Vibe-Änderungen */
     }
 
-    /* --- EMOTION STIMMUNGEN (Hintergründe) --- */
-    /* Wird per JS gesteuert */
-    body.mood-angry {
-      background: linear-gradient(135deg, #450a0a, #7f1d1d); /* Dunkles Rot/Böse */
-    }
-    body.mood-sad {
-      background: linear-gradient(135deg, #334155, #475569); /* Blass Grau/Blau */
-    }
-    body.mood-happy {
-      background: linear-gradient(135deg, #ca8a04, #eab308); /* Gelb/Orange/Fröhlich */
-    }
-    body.mood-neutral {
-      background: linear-gradient(135deg, #0f172a, #1e293b); /* Dunkelblau/Neutral */
+    @keyframes gradientBG {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
     }
 
-    /* --- LAYOUT CONTAINER --- */
-    .main-container {
+    /* --- CONTAINER & KARTEN (Glassmorphism) --- */
+    .glass-container {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3), var(--accent-glow);
+      transition: all 0.5s ease;
+    }
+
+    .main-content {
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 1.5rem;
+      width: 90%;
+      max-width: 450px;
+      padding: 1rem;
+      margin-top: 60px; /* Platz für Zurück-Button */
+      margin-bottom: 80px; /* Platz für Lautstärke */
       z-index: 10;
-      width: 100%;
-      max-width: 400px;
-      padding: 20px;
     }
 
-    /* --- HEADER / ZURÜCK BUTTON --- */
-    .top-left-nav {
+    /* --- 1. WEBCAM SECTION (Oben) --- */
+    #camera-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 10px;
+      border-radius: 24px;
+    }
+    .video-wrapper {
+      position: relative;
+      width: 160px;
+      height: 120px;
+      border-radius: 20px;
+      overflow: hidden;
+      border: 2px solid var(--accent-color);
+      box-shadow: var(--accent-glow);
+    }
+    #video-feed {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1); /* Spiegeln */
+    }
+    #emotion-container {
+      font-size: 0.85rem;
+      text-align: center;
+      opacity: 0.9;
+    }
+    #emotion-text {
+      font-weight: bold;
+      color: var(--accent-color);
+    }
+
+    /* --- 2. PLAYER COVER (Mitte, Groß) --- */
+    .cover-container {
+      width: 280px;
+      height: 280px;
+      border-radius: 24px;
+      overflow: hidden;
+      border: 3px solid var(--accent-color);
+      box-shadow: var(--accent-glow), 0 15px 35px rgba(0,0,0,0.4);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .cover-container:hover {
+      transform: scale(1.03);
+    }
+    #trackImage {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: #000; /* Platzhalter */
+    }
+
+    /* --- 3. INFO & EMOTION BARS (Unten) --- */
+    .info-section {
+      width: 100%;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      text-align: center;
+    }
+    .track-info h2 {
+      margin: 0;
+      font-size: 1.4rem;
+      font-weight: var(--title-weight);
+      letter-spacing: 0.5px;
+    }
+    .track-info p {
+      margin: 5px 0 0 0;
+      font-size: 1rem;
+      opacity: 0.8;
+    }
+
+    /* Neue Emotions-Balken (Gestapelt) */
+    .emotion-bars-container {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+      margin-top: 10px;
+    }
+    .emotion-bar-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.8rem;
+    }
+    .emotion-label {
+      width: 50px;
+      text-align: right;
+      opacity: 0.8;
+    }
+    .progress-track {
+      flex: 1;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      width: 0%; /* Wird per JS gesetzt (z.B. 50%) */
+      border-radius: 4px;
+      transition: width 0.5s ease-in-out, background-color 1s ease;
+    }
+    /* Farben für die Fills */
+    .fill-happy { background-color: var(--bar-happy); box-shadow: 0 0 10px var(--bar-happy); }
+    .fill-sad { background-color: var(--bar-sad); box-shadow: 0 0 10px var(--bar-sad); }
+    .fill-angry { background-color: var(--bar-angry); box-shadow: 0 0 10px var(--bar-angry); }
+    .fill-neutral { background-color: var(--bar-neutral); box-shadow: 0 0 10px var(--bar-neutral); }
+
+    /* Manuelle Buttons (klein, zum Testen) */
+    .manual-controls {
+      display: flex;
+      gap: 5px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .emotion-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--accent-color);
+      color: var(--text-color);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.7rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    .emotion-btn:hover {
+      background: var(--accent-color);
+      color: var(--bg-gradient); /* Invertierter Text für Kontrast */
+      box-shadow: var(--accent-glow);
+    }
+
+    /* --- ECKEN-ELEMENTE (Fixiert) --- */
+    .top-left {
       position: fixed;
       top: 20px;
       left: 20px;
       z-index: 100;
     }
-    .back-btn {
+    .back-link {
       text-decoration: none;
-      color: rgba(255, 255, 255, 0.7);
-      background: rgba(0, 0, 0, 0.3);
+      color: var(--text-color);
       padding: 10px 15px;
-      border-radius: 30px;
-      font-weight: 600;
-      backdrop-filter: blur(5px);
-      transition: all 0.3s ease;
+      font-weight: bold;
       display: flex;
       align-items: center;
       gap: 5px;
     }
-    .back-btn:hover {
-      background: rgba(255, 255, 255, 0.2);
-      color: white;
+    .back-link:hover {
+      color: var(--accent-color);
+      text-shadow: var(--accent-glow);
     }
 
-    /* --- WEBCAM SECTION (OBEN) --- */
-    #camera-section {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-    }
-    #video-feed {
-      width: 180px; /* Kleiner als vorher für modernes Layout */
-      height: 135px;
-      object-fit: cover;
-      border-radius: 20px;
-      border: 2px solid rgba(255, 255, 255, 0.2);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    }
-    #emotion-container {
-      background: rgba(0, 0, 0, 0.4);
-      padding: 5px 15px;
-      border-radius: 15px;
-      font-size: 0.9rem;
-      backdrop-filter: blur(4px);
-      text-align: center;
-    }
-
-    /* --- PLAYER CARD (MITTE) --- */
-    .player-card {
-      background: rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 24px;
-      padding: 25px;
-      width: 100%;
-      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-    }
-
-    .album-art {
-      width: 220px;
-      height: 220px;
-      border-radius: 12px;
-      box-shadow: 0 10px 20px rgba(0,0,0,0.3);
-      object-fit: cover;
-      background: #000;
-      margin-bottom: 1.5rem;
-      transition: transform 0.3s ease;
-    }
-    .album-art:hover {
-      transform: scale(1.02);
-    }
-
-    .track-info h2 {
-      margin: 0;
-      font-size: 1.25rem;
-      font-weight: 700;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 280px;
-    }
-    .track-info p {
-      margin: 5px 0 20px 0;
-      font-size: 0.95rem;
-      color: rgba(255, 255, 255, 0.7);
-    }
-
-    /* --- CONTROLS & PROGRESS --- */
-    .controls {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 1.5rem;
-      margin-bottom: 1rem;
-    }
-    .control-btn {
-      background: none;
-      border: none;
-      font-size: 2rem;
-      cursor: pointer;
-      color: white;
-      transition: transform 0.2s, color 0.2s;
-      padding: 0;
-    }
-    .control-btn:disabled {
-      opacity: 0.3;
-      cursor: default;
-    }
-    .control-btn:hover:not(:disabled) {
-      transform: scale(1.1);
-      color: #1db954; /* Spotify Grün beim Hover */
-    }
-    #startBtn {
-      font-size: 2.8rem; /* Play Button größer */
-    }
-
-    .progress-container {
-      width: 100%;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 0.75rem;
-      color: rgba(255, 255, 255, 0.6);
-    }
-    input[type=range] {
-      flex: 1;
-      -webkit-appearance: none;
-      background: rgba(255, 255, 255, 0.2);
-      height: 4px;
-      border-radius: 2px;
-      outline: none;
-    }
-    input[type=range]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 12px;
-      height: 12px;
-      background: white;
-      border-radius: 50%;
-      cursor: pointer;
-    }
-
-    /* --- LAUTSTÄRKE (RECHTS UNTEN) --- */
-    .volume-float {
+    .bottom-right {
       position: fixed;
-      bottom: 25px;
-      right: 25px;
-      background: rgba(0, 0, 0, 0.6);
-      backdrop-filter: blur(10px);
+      bottom: 20px;
+      right: 20px;
+      z-index: 100;
       padding: 10px 15px;
-      border-radius: 30px;
       display: flex;
       align-items: center;
       gap: 10px;
-      z-index: 100;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-      transition: opacity 0.3s;
     }
-    .volume-float:hover {
-      background: rgba(0, 0, 0, 0.8);
+    #volumeSlider {
+      width: 80px;
+      accent-color: var(--accent-color); /* Slider Farbe anpassen */
     }
-    .volume-icon { font-size: 1.2rem; }
-    #volumeSlider { width: 80px; }
 
-    /* --- VERSTECKTE / DEBUG ELEMENTE --- */
-    /* Log verstecken wir visuell, aber lassen es im Code, damit app.js nicht crasht */
-    #log {
+    /* Verstecktes Log, etc. */
+    #log, #prevBtn, #nextBtn, .progress-row {
+      display: none; /* Werden im neuen Layout nicht benötigt oder sind versteckt */
+    }
+    /* Play Button unsichtbar machen, da Autoplay */
+    #startBtn {
       display: none;
     }
-    /* Buttons für manuelle Emotion (optional ausgeblendet für cleaneren Look,
-       oder klein unter dem Player anzeigen) */
-    .manual-emotions {
-      margin-top: 1rem;
-      display: flex;
-      gap: 5px;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-    .emotion-btn {
-      background: rgba(255,255,255,0.1);
-      border: 1px solid rgba(255,255,255,0.2);
-      color: rgba(255,255,255,0.7);
-      padding: 5px 10px;
-      border-radius: 8px;
-      font-size: 0.8rem;
-      cursor: pointer;
-    }
-    .emotion-btn:hover { background: rgba(255,255,255,0.2); }
 
   </style>
 </head>
 
-<body>
+<body class="mood-neutral">
 
-<div class="top-left-nav">
-  <a href="start.html" class="back-btn">
-    <span>&#8592;</span> Zurück
+<div class="top-left glass-container">
+  <a href="start.html" class="back-link">
+    <span>&#8592;</span> Start
   </a>
 </div>
 
-<div class="main-container">
+<div class="main-content">
 
-  <div id="camera-section">
-    <video id="video-feed" width="320" height="240" autoplay muted playsinline></video>
+  <div id="camera-section" class="glass-container">
+    <div class="video-wrapper">
+      <video id="video-feed" width="320" height="240" autoplay muted playsinline></video>
+    </div>
     <div id="emotion-container">
-      Status: <span id="emotion-text" style="font-weight:700; color:#fff;">Warte...</span>
+      Dominante Emotion: <span id="emotion-text">Wird erkannt...</span>
     </div>
   </div>
 
-  <div class="player-card">
+  <div class="cover-container">
+    <img id="trackImage" src="" alt="Album Cover" />
+  </div>
 
-    <img id="trackImage" class="album-art" src="" alt="" />
+  <div class="info-section glass-container">
 
     <div class="track-info">
-      <h2 id="trackTitle">Songtitel laden...</h2>
+      <h2 id="trackTitle">Lade Song...</h2>
       <p id="trackArtist">Interpret</p>
     </div>
 
-    <div class="controls">
-      <button id="prevBtn" class="control-btn" disabled>&#9194;</button>
-      <button id="startBtn" class="control-btn" disabled>&#9654;</button> <button id="nextBtn" class="control-btn" disabled>&#9193;</button>
+    <div class="emotion-bars-container">
+      <div class="emotion-bar-wrap">
+        <span class="emotion-label">Happy</span>
+        <div class="progress-track">
+          <div class="progress-fill fill-happy" id="bar-happy-fill" style="width: 10%;"></div>
+        </div>
+      </div>
+      <div class="emotion-bar-wrap">
+        <span class="emotion-label">Sad</span>
+        <div class="progress-track">
+          <div class="progress-fill fill-sad" id="bar-sad-fill" style="width: 15%;"></div>
+        </div>
+      </div>
+      <div class="emotion-bar-wrap">
+        <span class="emotion-label">Angry</span>
+        <div class="progress-track">
+          <div class="progress-fill fill-angry" id="bar-angry-fill" style="width: 5%;"></div>
+        </div>
+      </div>
+      <div class="emotion-bar-wrap">
+        <span class="emotion-label">Neutral</span>
+        <div class="progress-track">
+          <div class="progress-fill fill-neutral" id="bar-neutral-fill" style="width: 70%;"></div>
+        </div>
+      </div>
     </div>
 
-    <div class="progress-container">
-      <span id="currentTime">0:00</span>
-      <input type="range" id="progressBar" min="0" max="0" value="0" disabled />
-      <span id="durationTime">0:00</span>
+    <div class="manual-controls">
+      <button class="emotion-btn" data-emotion="happy">Test Happy</button>
+      <button class="emotion-btn" data-emotion="sad">Test Sad</button>
+      <button class="emotion-btn" data-emotion="angry">Test Angry</button>
+      <button class="emotion-btn" data-emotion="neutral">Test Neutral</button>
     </div>
 
-    <div class="manual-emotions">
-      <button class="emotion-btn" data-emotion="happy">Happy</button>
-      <button class="emotion-btn" data-emotion="sad">Sad</button>
-      <button class="emotion-btn" data-emotion="angry">Angry</button>
-      <button class="emotion-btn" data-emotion="neutral">Neutral</button>
-    </div>
   </div>
 
 </div>
 
-<div class="volume-float">
-  <span class="volume-icon">🔊</span>
+<div class="bottom-right glass-container">
+  <span>🔊</span>
   <input type="range" id="volumeSlider" min="0" max="100" value="50" disabled />
   <span id="volumeValue" style="width: 30px; text-align:right; font-size:0.8rem;">50%</span>
 </div>
 
+<button id="prevBtn" disabled>⏮</button>
+<button id="startBtn" disabled>▶️</button>
+<button id="nextBtn" disabled>⏭</button>
+<div class="progress-row">
+  <span id="currentTime">0:00</span>
+  <input type="range" id="progressBar" min="0" max="0" value="0" disabled />
+  <span id="durationTime">0:00</span>
+</div>
 <pre id="log"></pre>
 
 <script src="face-api.min.js"></script>
@@ -320,48 +409,86 @@
 
 <script>
   document.addEventListener("DOMContentLoaded", () => {
-    const emotionTextEl = document.getElementById("emotion-text");
     const bodyEl = document.body;
+    const emotionTextEl = document.getElementById("emotion-text");
 
-    // Funktion zum Setzen der Hintergrundklasse
-    function updateBackgroundColor(emotionString) {
+    // Balken Elemente
+    const barHappy = document.getElementById("bar-happy-fill");
+    const barSad = document.getElementById("bar-sad-fill");
+    const barAngry = document.getElementById("bar-angry-fill");
+    const barNeutral = document.getElementById("bar-neutral-fill");
+
+    // --- VIBE WECHSEL FUNKTION ---
+    function updateVibe(emotionString) {
       const text = emotionString.toLowerCase();
-
-      // Alle alten Mood-Klassen entfernen
       bodyEl.classList.remove("mood-angry", "mood-sad", "mood-happy", "mood-neutral");
 
-      // Neue Klasse basierend auf Textinhalt setzen
-      if (text.includes("angry") || text.includes("wütend") || text.includes("angry")) {
+      if (text.includes("angry") || text.includes("wütend")) {
         bodyEl.classList.add("mood-angry");
-      }
-      else if (text.includes("sad") || text.includes("traurig") || text.includes("fear")) {
+      } else if (text.includes("sad") || text.includes("traurig") || text.includes("fear")) {
         bodyEl.classList.add("mood-sad");
-      }
-      else if (text.includes("happy") || text.includes("glücklich") || text.includes("surprise")) {
+      } else if (text.includes("happy") || text.includes("glücklich") || text.includes("surprise")) {
         bodyEl.classList.add("mood-happy");
-      }
-      else {
+      } else {
         bodyEl.classList.add("mood-neutral");
       }
     }
 
-    // Beobachter (MutationObserver), der feuert, wenn sich der Text im <span> ändert
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.type === "childList" || mutation.type === "characterData") {
-          updateBackgroundColor(emotionTextEl.innerText);
+    // --- BALKEN UPDATE FUNKTION (Platzhalter-Logik) ---
+    // HINWEIS: Idealerweise sendet deine camera.js ein Event mit den echten Werten.
+    // Hier simuliere ich Werte basierend auf der dominanten Emotion für den visuellen Effekt.
+    function updateBars(dominantEmotion) {
+      const text = dominantEmotion.toLowerCase();
+      let happyVal = 10, sadVal = 10, angryVal = 5, neutralVal = 75;
+
+      if (text.includes("happy") || text.includes("glücklich")) {
+        happyVal = 60; sadVal = 5; angryVal = 5; neutralVal = 30;
+      } else if (text.includes("sad") || text.includes("traurig")) {
+        happyVal = 5; sadVal = 60; angryVal = 10; neutralVal = 25;
+      } else if (text.includes("angry") || text.includes("wütend")) {
+        happyVal = 5; sadVal = 10; angryVal = 65; neutralVal = 20;
+      }
+      // (Neutral bleibt Standard)
+
+      // Werte setzen (mit Zufalls-Schwankung für Lebendigkeit)
+      barHappy.style.width = `${Math.min(100, Math.max(5, happyVal + (Math.random()*10-5)))}%`;
+      barSad.style.width = `${Math.min(100, Math.max(5, sadVal + (Math.random()*10-5)))}%`;
+      barAngry.style.width = `${Math.min(100, Math.max(5, angryVal + (Math.random()*10-5)))}%`;
+      barNeutral.style.width = `${Math.min(100, Math.max(5, neutralVal + (Math.random()*10-5)))}%`;
+    }
+
+    // --- AUTO-UPDATE (über MutationObserver auf emotion-text) ---
+    if (emotionTextEl) {
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.type === "childList" || mutation.type === "characterData") {
+            const newEmotion = emotionTextEl.innerText;
+            updateVibe(newEmotion);
+            updateBars(newEmotion);
+          }
+        });
+      });
+      observer.observe(emotionTextEl, { subtree: true, childList: true, characterData: true });
+    }
+
+    // --- MANUELLER UPDATE (über Test-Buttons) ---
+    document.querySelectorAll(".emotion-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const emo = btn.getAttribute("data-emotion");
+        // Wir setzen den Text im emotion-text span, damit der Observer reagiert
+        // und sowohl Vibe als auch Balken updated.
+        if (emotionTextEl) emotionTextEl.innerText = emo.charAt(0).toUpperCase() + emo.slice(1);
+
+        // Optional: Auch der app.js Bescheid geben (wie vorher)
+        if (window.scheduleEmotionChange) {
+          window.scheduleEmotionChange(emo);
         }
       });
     });
 
-    // Start der Beobachtung
-    if (emotionTextEl) {
-      observer.observe(emotionTextEl, {
-        subtree: true,
-        childList: true,
-        characterData: true
-      });
-    }
+    // Initiale Ausführung
+    updateVibe("neutral");
+    updateBars("neutral");
   });
 </script>
 
