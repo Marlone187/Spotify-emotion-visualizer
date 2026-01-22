@@ -4,13 +4,37 @@ const REDIRECT_URI = "https://marlone187.github.io/Spotify-emotion-visualizer/ca
 // Modus: "auto" oder "manual"
 const SELECTED_MODE = sessionStorage.getItem("selected_mode") || "auto";
 
-// 🎵 Playlists je Emotion
-const PLAYLISTS = {
+// ✅ Default Playlists je Emotion (bleiben bestehen)
+const DEFAULT_PLAYLISTS = {
     happy: "spotify:playlist:0s4GDB01raiqiNVstNfUXe",
     sad: "spotify:playlist:45rWp1I6aL5ruR3WNG5K2H",
     neutral: "spotify:playlist:07LPGPmhNOGYiWIaFhY61V",
     angry: "spotify:playlist:55DSMbgOO36tDodpwCykG4",
 };
+
+// ✅ Custom Playlists aus localStorage (Prototyp)
+function loadCustomPlaylists() {
+    const raw = localStorage.getItem("custom_playlists");
+    if (!raw) return null;
+    try { return JSON.parse(raw); } catch { return null; }
+}
+
+// ✅ Effektive Playlists (Custom überschreibt Default)
+function getEffectivePlaylists() {
+    const custom = loadCustomPlaylists();
+    const effective = { ...DEFAULT_PLAYLISTS };
+
+    if (custom) {
+        if (custom.happy_uri) effective.happy = custom.happy_uri;
+        if (custom.sad_uri) effective.sad = custom.sad_uri;
+        if (custom.neutral_uri) effective.neutral = custom.neutral_uri;
+        if (custom.angry_uri) effective.angry = custom.angry_uri;
+    }
+    return effective;
+}
+
+// 🎵 Playlists je Emotion (wird dynamisch gelesen)
+let PLAYLISTS = getEffectivePlaylists();
 
 // Startemotion:
 // - Auto: "happy"
@@ -20,9 +44,11 @@ let currentEmotion =
         ? (sessionStorage.getItem("manual_emotion") || "happy")
         : "happy";
 
+// Wenn jemand Custom-Playlists speichert und dann direkt weitergeht,
+// stellen wir sicher, dass currentContextUri anhand der effektiven Playlists gesetzt wird.
 let currentContextUri = PLAYLISTS[currentEmotion];
 
-// Button-Emotion (hat Vorrang vor Kamera) – nur Auto-Modus nutzt das in deinem bestehenden Flow
+// Button-Emotion (hat Vorrang vor Kamera) – Auto-Modus
 let pendingEmotion = null;
 
 // Logging
@@ -32,23 +58,15 @@ const log = (...msg) => {
     console.log(...msg);
 };
 
-const SCOPES = [
-    "streaming",
-    "user-modify-playback-state",
-    "user-read-playback-state",
-    "user-read-private",
-    "user-read-email",
-].join(" ");
-
 // globaler Token / Player
 let accessToken = sessionStorage.getItem("spotify_access_token") || null;
 let player = null;
 let deviceId = null;
 let lastTrackId = null;
-let isPlaying = false; // für Play/Pause-Toggle
-let playerReady = false; // ist Player initialisiert?
+let isPlaying = false;
+let playerReady = false;
 
-// Für Enderkennung + saubere Übergänge (Auto-Modus)
+// Auto-Modus helpers
 let preEndHandledTrackId = null;
 let isSwitchingPlaylist = false;
 
@@ -65,17 +83,18 @@ const durationEl = document.getElementById("durationTime");
 const volumeSlider = document.getElementById("volumeSlider");
 const volumeValueEl = document.getElementById("volumeValue");
 
-// 🔁 Icons für Play/Pause
+// Icons
 const PLAY_ICON = "▶️";
 const PAUSE_ICON = "⏸️";
 
-// Start-Button freischalten (nur auf Seiten mit startBtn)
+// Start-Button freischalten
 if (startBtn) {
     if (accessToken) {
         startBtn.disabled = false;
         startBtn.textContent = PLAY_ICON;
         log("Access Token gefunden, Start-Button freigegeben.");
         log("Modus:", SELECTED_MODE, "| Startemotion:", currentEmotion);
+        log("Playlists aktiv (effective):", JSON.stringify(PLAYLISTS));
     } else {
         log("Kein Access Token – solltest eigentlich auf auth.html gewesen sein.");
     }
@@ -87,7 +106,7 @@ let currentDurationMs = 0;
 let progressInterval = null;
 
 // ===============================
-// TOKEN EXCHANGE (wird nur auf callback.html genutzt)
+// TOKEN EXCHANGE (nur callback.html)
 // ===============================
 async function exchangeCodeForToken(code) {
     const verifier = sessionStorage.getItem("code_verifier");
@@ -118,7 +137,7 @@ async function exchangeCodeForToken(code) {
 }
 
 // ===============================
-// CALLBACK LOGIK (nur aktiv auf callback.html)
+// CALLBACK LOGIK
 // ===============================
 (async () => {
     const isCallbackPage = window.location.pathname.endsWith("callback.html");
@@ -143,20 +162,16 @@ async function exchangeCodeForToken(code) {
 })();
 
 // ===============================
-// Emotion-Buttons (nur vorhanden auf auto-index Seite, optional)
+// Emotion Buttons (optional)
 // ===============================
 function scheduleEmotionChange(emotion) {
+    PLAYLISTS = getEffectivePlaylists(); // falls Startseite geändert wurde (neuer Tab)
     if (!PLAYLISTS[emotion]) {
         log("Unbekannte Emotion:", emotion);
         return;
     }
-
     pendingEmotion = emotion;
-    log(
-        "Neue Emotion per Button geplant:",
-        emotion,
-        "(Button hat Vorrang vor Kamera beim nächsten Wechsel)"
-    );
+    log("Neue Emotion per Button geplant:", emotion);
 }
 
 document.querySelectorAll("[data-emotion]").forEach((btn) => {
@@ -167,7 +182,7 @@ document.querySelectorAll("[data-emotion]").forEach((btn) => {
 });
 
 // ===============================
-// Hilfsfunktionen für Emotion-Struktur
+// Stats Logger
 // ===============================
 function logEmotionStats(stats) {
     if (!stats) {
@@ -185,7 +200,7 @@ function logEmotionStats(stats) {
 }
 
 // ===============================
-// Progress-Loop (einmal zentral)
+// Progress-Loop
 // ===============================
 function startProgressLoop() {
     if (!player) return;
@@ -207,28 +222,18 @@ function startProgressLoop() {
 
             if (!currentId || !duration) return;
 
-            // Songwechsel nur zur Info
             if (currentId !== lastTrackId) {
-                if (lastTrackId) {
-                    log("🎵 Songwechsel erkannt (Info):", lastTrackId, "→", currentId);
-                }
+                if (lastTrackId) log("🎵 Songwechsel erkannt (Info):", lastTrackId, "→", currentId);
                 lastTrackId = currentId;
-                preEndHandledTrackId = null; // für neuen Song
+                preEndHandledTrackId = null;
             }
 
-            // ✅ Auto-Modus: Pre-End-Erkennung
+            // ✅ Auto only: Song-End Evaluierung
             if (SELECTED_MODE === "auto") {
                 const remaining = duration - position;
-
-                if (
-                    remaining <= 1500 &&
-                    remaining >= 0 &&
-                    preEndHandledTrackId !== currentId
-                ) {
+                if (remaining <= 1500 && remaining >= 0 && preEndHandledTrackId !== currentId) {
                     preEndHandledTrackId = currentId;
-                    log(
-                        `⏱ Song endet bald (Rest: ${Math.round(remaining)} ms) → Emotion auswerten.`
-                    );
+                    log(`⏱ Song endet bald (Rest: ${Math.round(remaining)} ms) → Emotion auswerten.`);
                     await evaluateAndMaybeSwitchEmotion("song_end");
                 }
             }
@@ -239,10 +244,9 @@ function startProgressLoop() {
 }
 
 // ===============================
-// zentrale Funktion: Emotion auswerten & ggf. Playlist wechseln (NUR AUTO)
+// Auto: Emotion evaluieren & ggf wechseln
 // ===============================
 async function evaluateAndMaybeSwitchEmotion(reason) {
-    // ❌ Manual-Modus: NIE automatisch wechseln
     if (SELECTED_MODE !== "auto") return false;
 
     if (isSwitchingPlaylist) {
@@ -250,41 +254,33 @@ async function evaluateAndMaybeSwitchEmotion(reason) {
         return false;
     }
 
+    PLAYLISTS = getEffectivePlaylists(); // immer aktuell halten
+
     log("------------------------------------");
     log("🎯 Emotionsevaluierung, Grund:", reason);
 
     let stats = null;
-    if (typeof window.getEmotionStats === "function") {
-        stats = window.getEmotionStats();
-    }
+    if (typeof window.getEmotionStats === "function") stats = window.getEmotionStats();
     logEmotionStats(stats);
 
     let chosenEmotion = null;
 
-    // 1) Button-Emotion hat Vorrang
     if (pendingEmotion && PLAYLISTS[pendingEmotion]) {
         log("Nutze Button-Emotion (Vorrang):", pendingEmotion);
         chosenEmotion = pendingEmotion;
-    } else {
-        // 2) Kamera-Emotion über gesamte Songdauer
-        if (typeof window.getDominantEmotion === "function") {
-            const cameraEmotion = window.getDominantEmotion();
-            if (cameraEmotion && PLAYLISTS[cameraEmotion]) {
-                log("Dominante Emotion (Kamera, gesamter Song):", cameraEmotion);
-                chosenEmotion = cameraEmotion;
-            } else {
-                log("Keine gültige Kamera-Emotion für diesen Song gefunden.");
-            }
+    } else if (typeof window.getDominantEmotion === "function") {
+        const cameraEmotion = window.getDominantEmotion();
+        if (cameraEmotion && PLAYLISTS[cameraEmotion]) {
+            log("Dominante Emotion (Kamera, gesamter Song):", cameraEmotion);
+            chosenEmotion = cameraEmotion;
+        } else {
+            log("Keine gültige Kamera-Emotion für diesen Song gefunden.");
         }
     }
 
-    // Button ist verbraucht
     pendingEmotion = null;
 
-    // Emotion-Tracking für nächsten Song vorbereiten
-    if (typeof window.resetEmotionStats === "function") {
-        window.resetEmotionStats();
-    }
+    if (typeof window.resetEmotionStats === "function") window.resetEmotionStats();
 
     if (!chosenEmotion) {
         log("→ Keine Emotion gewählt – Playlist bleibt bei:", currentEmotion);
@@ -297,7 +293,6 @@ async function evaluateAndMaybeSwitchEmotion(reason) {
     }
 
     log("→ Playlistwechsel:", currentEmotion, "→", chosenEmotion, "(Grund:", reason + ")");
-
     isSwitchingPlaylist = true;
 
     if (progressInterval) {
@@ -306,12 +301,7 @@ async function evaluateAndMaybeSwitchEmotion(reason) {
     }
 
     if (player) {
-        try {
-            await player.pause();
-            log("Player vor Playlistwechsel pausiert.");
-        } catch (e) {
-            log("Fehler beim Pausieren vor Playlistwechsel:", e);
-        }
+        try { await player.pause(); } catch {}
     }
 
     await applyEmotionNow(chosenEmotion);
@@ -326,7 +316,7 @@ async function evaluateAndMaybeSwitchEmotion(reason) {
 }
 
 // ===============================
-// SPOTIFY PLAYER INIT
+// Player Init
 // ===============================
 window.onSpotifyWebPlaybackSDKReady = () => {
     log("Spotify Web Playback SDK geladen");
@@ -334,10 +324,7 @@ window.onSpotifyWebPlaybackSDKReady = () => {
 
 async function initPlayerIfNeeded() {
     if (player || playerReady) return;
-    if (!accessToken) {
-        log("initPlayerIfNeeded: kein Access Token.");
-        return;
-    }
+    if (!accessToken) return;
 
     log("Initialisiere Spotify Player...");
 
@@ -347,10 +334,13 @@ async function initPlayerIfNeeded() {
         volume: 0.5,
     });
 
-    // Player bereit
     player.addListener("ready", async ({ device_id }) => {
         deviceId = device_id;
         playerReady = true;
+
+        PLAYLISTS = getEffectivePlaylists(); // nochmal aktuell
+        currentContextUri = PLAYLISTS[currentEmotion];
+
         log("Player ready:", device_id);
         log("Starte mit Emotion:", currentEmotion, "->", currentContextUri);
 
@@ -363,36 +353,18 @@ async function initPlayerIfNeeded() {
             const volPercent = Math.round(vol * 100);
             if (volumeSlider) volumeSlider.value = volPercent.toString();
             if (volumeValueEl) volumeValueEl.textContent = volPercent + "%";
-            log(`Aktuelle Lautstärke: ${volPercent}%`);
-        } catch (err) {
-            log("getVolume Fehler:", err);
-        }
+        } catch {}
 
-        // Shuffle aktivieren
+        // Shuffle
         try {
-            const shuffleRes = await fetch(
+            await fetch(
                 `https://api.spotify.com/v1/me/player/shuffle?state=true&device_id=${deviceId}`,
-                {
-                    method: "PUT",
-                    headers: { Authorization: "Bearer " + accessToken },
-                }
+                { method: "PUT", headers: { Authorization: "Bearer " + accessToken } }
             );
+        } catch {}
 
-            if (shuffleRes.status === 204) {
-                log("Shuffle aktiviert ✅");
-            } else {
-                log("Shuffle Fehler:", shuffleRes.status, await shuffleRes.text());
-            }
-        } catch (e) {
-            log("Shuffle Request Error:", e);
-        }
-
-        // Auto: Tracking für ersten Song resetten
         if (SELECTED_MODE === "auto") {
-            if (typeof window.resetEmotionStats === "function") {
-                window.resetEmotionStats();
-                log("Emotion-Tracking gestartet für ersten Song.");
-            }
+            if (typeof window.resetEmotionStats === "function") window.resetEmotionStats();
         }
 
         await startPlayback();
@@ -410,14 +382,9 @@ async function initPlayerIfNeeded() {
     await player.connect();
 }
 
-// ===============================
-// START-BUTTON ALS PLAY/PAUSE-TOGGLE
-// ===============================
+// StartBtn toggle
 startBtn?.addEventListener("click", async () => {
-    if (!accessToken) {
-        log("Kein Access Token – bitte zuerst einloggen (auth.html).");
-        return;
-    }
+    if (!accessToken) return;
 
     if (!playerReady || !player) {
         await initPlayerIfNeeded();
@@ -429,21 +396,17 @@ startBtn?.addEventListener("click", async () => {
             await player.pause();
             isPlaying = false;
             if (startBtn) startBtn.textContent = PLAY_ICON;
-            log("Playback pausiert (Button).");
         } else {
             await player.resume();
             isPlaying = true;
             if (startBtn) startBtn.textContent = PAUSE_ICON;
-            log("Playback gestartet/fortgesetzt (Button).");
         }
     } catch (err) {
         log("Pause/Resume Fehler:", err);
     }
 });
 
-// ===============================
-// Now Playing / Timeline
-// ===============================
+// Timeline + UI helpers
 function msToTime(ms) {
     if (!Number.isFinite(ms) || ms < 0) ms = 0;
     const totalSeconds = Math.floor(ms / 1000);
@@ -474,16 +437,12 @@ function updateNowPlayingUI(state) {
 
     if (durationEl) durationEl.textContent = msToTime(duration);
 
-    if (!isSeeking && currentTimeEl) {
-        currentTimeEl.textContent = msToTime(position);
-    }
+    if (!isSeeking && currentTimeEl) currentTimeEl.textContent = msToTime(position);
 
     if (progressBar) {
         progressBar.disabled = duration <= 0;
         progressBar.max = duration.toString();
-        if (!isSeeking) {
-            progressBar.value = position.toString();
-        }
+        if (!isSeeking) progressBar.value = position.toString();
     }
 }
 
@@ -495,88 +454,45 @@ progressBar?.addEventListener("input", (e) => {
 });
 
 progressBar?.addEventListener("change", async (e) => {
-    if (!player) {
-        isSeeking = false;
-        return;
-    }
+    if (!player) { isSeeking = false; return; }
     const newPos = Number(e.target.value);
-    log("Seek zu:", newPos, "ms");
-    try {
-        await player.seek(newPos);
-    } catch (err) {
-        log("Seek Fehler:", err);
-    }
+    try { await player.seek(newPos); } catch {}
     isSeeking = false;
 });
 
-// ===============================
-// PREV / NEXT Buttons
-// ===============================
+// Prev/Next
 prevBtn?.addEventListener("click", async () => {
-    if (!player) {
-        log("Prev: Player nicht bereit.");
-        return;
-    }
-
-    try {
-        await player.previousTrack();
-        log("Zu vorherigem Track gesprungen.");
-    } catch (err) {
-        log("Prev Fehler:", err);
-    }
+    if (!player) return;
+    try { await player.previousTrack(); } catch {}
 });
 
 nextBtn?.addEventListener("click", async () => {
-    if (!player) {
-        log("Next: Player nicht bereit.");
-        return;
-    }
+    if (!player) return;
 
     try {
-        // ✅ Auto: erst evaluieren
         if (SELECTED_MODE === "auto") {
             const changed = await evaluateAndMaybeSwitchEmotion("skip_next");
-            if (!changed) {
-                await player.nextTrack();
-                log("Zum nächsten Track gesprungen (gleiche Playlist).");
-            } else {
-                log("Playlist bereits gewechselt – kein zusätzlicher Skip nötig.");
-            }
+            if (!changed) await player.nextTrack();
         } else {
-            // ✅ Manual: normaler Skip, KEIN Playlistwechsel
             await player.nextTrack();
-            log("Zum nächsten Track gesprungen (Manual-Modus).");
         }
-    } catch (err) {
-        log("Next Fehler:", err);
-    }
+    } catch {}
 });
 
-// ===============================
-// VOLUME Slider
-// ===============================
+// Volume
 volumeSlider?.addEventListener("input", async (e) => {
     const val = Number(e.target.value);
     if (volumeValueEl) volumeValueEl.textContent = `${val}%`;
+    if (!player) return;
 
-    if (!player) {
-        log("Volume: Player nicht bereit.");
-        return;
-    }
-
-    const volume = val / 100;
-    try {
-        await player.setVolume(volume);
-        log("Lautstärke gesetzt auf", val + "%");
-    } catch (err) {
-        log("setVolume Fehler:", err);
-    }
+    try { await player.setVolume(val / 100); } catch {}
 });
 
 // ===============================
-// Emotion sofort anwenden (Playlist wechseln)
+// Playlist setzen (Manual & Auto)
 // ===============================
 async function applyEmotionNow(emotion) {
+    PLAYLISTS = getEffectivePlaylists(); // ✅ immer aktuell
     if (!PLAYLISTS[emotion]) {
         log("Unbekannte Emotion beim Anwenden:", emotion);
         return;
@@ -585,12 +501,11 @@ async function applyEmotionNow(emotion) {
     currentEmotion = emotion;
     currentContextUri = PLAYLISTS[currentEmotion];
 
-    // ✅ Manual: merken, damit es bis zur nächsten Messung gleich bleibt
     if (SELECTED_MODE === "manual") {
         sessionStorage.setItem("manual_emotion", currentEmotion);
     }
 
-    log("Wechsle jetzt Playlist auf Emotion:", currentEmotion);
+    log("Wechsle jetzt Playlist auf Emotion:", currentEmotion, "->", currentContextUri);
 
     if (!deviceId || !accessToken) {
         log("Kein Device oder Token – kann Playlist nicht wechseln.");
@@ -614,23 +529,21 @@ async function applyEmotionNow(emotion) {
     );
 
     if (res.status === 204) {
-        log("Playlist gewechselt! Neue Emotion:", currentEmotion);
+        log("Playlist gesetzt ✅");
     } else {
-        log("Fehler beim Wechseln:", res.status, await res.text());
+        log("Fehler beim Setzen:", res.status, await res.text());
     }
 }
 
-// ✅ wichtig: für manual.html zugänglich machen
+// ✅ für manual.html
 window.applyEmotionNow = applyEmotionNow;
 
-// ===============================
-// PLAYBACK (Start mit aktueller Emotion)
-// ===============================
+// Start playback
 async function startPlayback() {
-    if (!deviceId) {
-        log("Kein Gerät (deviceId) – ist der Player ready?");
-        return;
-    }
+    if (!deviceId) return;
+
+    PLAYLISTS = getEffectivePlaylists();
+    currentContextUri = PLAYLISTS[currentEmotion];
 
     const body = currentContextUri.startsWith("spotify:playlist")
         ? { context_uri: currentContextUri }

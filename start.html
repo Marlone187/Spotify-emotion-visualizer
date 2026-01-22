@@ -1,5 +1,4 @@
 <!doctype html>
-
 <html lang="de">
 <head>
   <meta charset="utf-8" />
@@ -23,27 +22,27 @@
       min-height: 100vh;
     }
 
-    .container {
-      width: min(900px, 100%);
-    }
+    .container { width: min(980px, 100%); }
 
-    h1 {
-      margin: 0 0 .5rem 0;
-      font-size: 1.8rem;
-    }
-
-    p {
-      margin: 0 0 1.5rem 0;
-      color: #9ca3af;
-    }
+    h1 { margin: 0 0 .5rem 0; font-size: 1.8rem; }
+    p { margin: 0 0 1.25rem 0; color: #9ca3af; }
 
     .grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .card {
+      background: #020617;
+      border: 1px solid #0f172a;
+      border-radius: 1rem;
+      padding: 1.25rem;
     }
 
     .card-btn {
+      width: 100%;
       background: #020617;
       border: 1px solid #0f172a;
       border-radius: 1rem;
@@ -60,12 +59,8 @@
       border-color: #3b82f6;
     }
 
-    .card-btn h2 {
-      margin: 0 0 .5rem 0;
-      font-size: 1.25rem;
-    }
-
-    .card-btn .tag {
+    .card-btn h2 { margin: 0 0 .5rem 0; font-size: 1.25rem; }
+    .tag {
       display: inline-block;
       padding: .25rem .5rem;
       border-radius: 999px;
@@ -75,14 +70,49 @@
       margin-bottom: .75rem;
     }
 
-    .card-btn ul {
-      margin: .75rem 0 0 1rem;
-      color: #9ca3af;
+    .inputs {
+      display: grid;
+      gap: .75rem;
+      margin-top: .75rem;
     }
 
-    @media (max-width: 720px) {
-      .grid { grid-template-columns: 1fr; }
+    label { font-size: .9rem; color: #cbd5e1; }
+    input {
+      width: 100%;
+      padding: .65rem .75rem;
+      border-radius: .75rem;
+      border: 1px solid #1f2a44;
+      background: #000814;
+      color: #e5e7eb;
+      outline: none;
     }
+
+    input::placeholder { color: #6b7280; }
+
+    .rowBtns {
+      display: flex;
+      gap: .5rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+      align-items: center;
+    }
+
+    .btn {
+      background: #0f172a;
+      color: #e5e7eb;
+      border: 1px solid #1f2a44;
+      border-radius: .75rem;
+      padding: .6rem .9rem;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .btn.secondary { opacity: .9; }
+    .btn.danger { border-color: #5b1b1b; background: #1a0b0b; }
+
+    .hint { color: #9ca3af; font-size: .9rem; margin-top: .5rem; }
+    .ok { color: #34d399; }
+    .bad { color: #fca5a5; }
 
     .logout {
       margin-top: 1rem;
@@ -91,57 +121,199 @@
       text-decoration: underline;
       cursor: pointer;
     }
-  </style>
 
+    @media (max-width: 820px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
 
 <body>
 <div class="container">
   <h1>Wähle deinen Modus</h1>
-  <p>Du bist bei Spotify angemeldet. Wähle, wie Emotionen genutzt werden sollen.</p>
+  <p>Du bist bei Spotify angemeldet. Optional kannst du eigene Playlists pro Emotion setzen (Prototyp: Speicherung im Browser).</p>
 
-  ```
+  <!-- Playlist Einstellungen -->
+  <div class="card">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap;">
+      <h2 style="margin:0;">🎵 Playlists pro Emotion</h2>
+      <div class="hint">Speichert lokal im Browser (localStorage)</div>
+    </div>
+
+    <div class="inputs">
+      <div>
+        <label>😊 Happy Playlist Link/URI</label>
+        <input id="pl_happy" placeholder="z.B. https://open.spotify.com/playlist/... oder spotify:playlist:..." />
+      </div>
+
+      <div>
+        <label>😢 Sad Playlist Link/URI</label>
+        <input id="pl_sad" placeholder="z.B. https://open.spotify.com/playlist/... oder spotify:playlist:..." />
+      </div>
+
+      <div>
+        <label>😐 Neutral Playlist Link/URI</label>
+        <input id="pl_neutral" placeholder="z.B. https://open.spotify.com/playlist/... oder spotify:playlist:..." />
+      </div>
+
+      <div>
+        <label>😡 Angry Playlist Link/URI</label>
+        <input id="pl_angry" placeholder="z.B. https://open.spotify.com/playlist/... oder spotify:playlist:..." />
+      </div>
+    </div>
+
+    <div class="rowBtns">
+      <button class="btn" id="savePlaylistsBtn">Speichern</button>
+      <button class="btn secondary" id="loadPlaylistsBtn">Neu laden</button>
+      <button class="btn danger" id="resetPlaylistsBtn">Auf Default zurücksetzen</button>
+      <span id="playlistStatus" class="hint"></span>
+    </div>
+
+    <div class="hint">
+      Akzeptiert: <code>spotify:playlist:ID</code> oder <code>https://open.spotify.com/playlist/ID</code> (auch mit ?si=...).
+    </div>
+  </div>
+
+  <!-- Modus Auswahl -->
   <div class="grid">
     <button class="card-btn" onclick="
-    sessionStorage.setItem('selected_mode','manual');
-    window.location='manual.html';
-  ">
+        sessionStorage.setItem('selected_mode','manual');
+        window.location='manual.html';
+      ">
       <div class="tag">Manuell</div>
       <h2>Manuelle Emotion</h2>
-      <p>Du startest eine Messung per Button und zeigst 5 Sekunden eine Emotion.</p>
-      <ul>
-        <li>Button drücken → 5 Sekunden Emotion machen</li>
-        <li>Danach passende Playlist abspielen</li>
-        <li>Bleibt aktiv bis du erneut drückst</li>
-      </ul>
+      <p>Button drücken → 5 Sekunden Emotion machen → passende Playlist abspielen (bleibt bis zur nächsten Messung).</p>
     </button>
 
     <button class="card-btn" onclick="
-    sessionStorage.setItem('selected_mode','auto');
-    window.location='index.html';
-  ">
+        sessionStorage.setItem('selected_mode','auto');
+        window.location='index.html';
+      ">
       <div class="tag">Automatisch</div>
       <h2>Automatische Emotion</h2>
       <p>Emotion wird während des Songs getrackt und Playlist automatisch gewechselt.</p>
-      <ul>
-        <li>Live-Erkennung</li>
-        <li>Tracking pro Song</li>
-        <li>Automatischer Playlist-Wechsel</li>
-      </ul>
     </button>
   </div>
 
   <span class="logout" onclick="
-  sessionStorage.removeItem('spotify_access_token');
-  sessionStorage.removeItem('code_verifier');
-  sessionStorage.removeItem('selected_mode');
-  window.location='auth.html';
-">
-  Logout / neu verbinden
-</span>
-  ```
-
+      sessionStorage.removeItem('spotify_access_token');
+      sessionStorage.removeItem('code_verifier');
+      sessionStorage.removeItem('selected_mode');
+      window.location='auth.html';
+    ">
+      Logout / neu verbinden
+    </span>
 </div>
+
+<script>
+  // Default Playlists (nur für Anzeige/Reset)
+  const DEFAULT_PLAYLISTS = {
+    happy: "spotify:playlist:0s4GDB01raiqiNVstNfUXe",
+    sad: "spotify:playlist:45rWp1I6aL5ruR3WNG5K2H",
+    neutral: "spotify:playlist:07LPGPmhNOGYiWIaFhY61V",
+    angry: "spotify:playlist:55DSMbgOO36tDodpwCykG4",
+  };
+
+  const inputs = {
+    happy: document.getElementById("pl_happy"),
+    sad: document.getElementById("pl_sad"),
+    neutral: document.getElementById("pl_neutral"),
+    angry: document.getElementById("pl_angry"),
+  };
+
+  const statusEl = document.getElementById("playlistStatus");
+
+  function toPlaylistUri(value) {
+    if (!value) return "";
+    const v = value.trim();
+
+    // spotify:playlist:ID
+    if (v.startsWith("spotify:playlist:")) return v;
+
+    // https://open.spotify.com/playlist/ID?...
+    const m = v.match(/open\.spotify\.com\/playlist\/([a-zA-Z0-9]+)(\?|$)/);
+    if (m && m[1]) return `spotify:playlist:${m[1]}`;
+
+    return ""; // ungültig
+  }
+
+  function loadFromStorage() {
+    const raw = localStorage.getItem("custom_playlists");
+    if (!raw) return null;
+    try { return JSON.parse(raw); } catch { return null; }
+  }
+
+  function writeInputsFromStorage() {
+    const saved = loadFromStorage();
+    const data = saved || {};
+    inputs.happy.value = data.happy_link || "";
+    inputs.sad.value = data.sad_link || "";
+    inputs.neutral.value = data.neutral_link || "";
+    inputs.angry.value = data.angry_link || "";
+    statusEl.textContent = saved ? "Custom-Playlists geladen." : "Keine Custom-Playlists gesetzt (Default aktiv).";
+    statusEl.className = "hint " + (saved ? "ok" : "");
+  }
+
+  function saveToStorage() {
+    // Wir speichern die ORIGINAL-Links, und zusätzlich die URI (falls gültig)
+    const happy_link = inputs.happy.value.trim();
+    const sad_link = inputs.sad.value.trim();
+    const neutral_link = inputs.neutral.value.trim();
+    const angry_link = inputs.angry.value.trim();
+
+    // Validierung: leere Felder sind okay (bedeutet Default)
+    const parsed = {
+      happy_uri: toPlaylistUri(happy_link),
+      sad_uri: toPlaylistUri(sad_link),
+      neutral_uri: toPlaylistUri(neutral_link),
+      angry_uri: toPlaylistUri(angry_link),
+
+      happy_link, sad_link, neutral_link, angry_link,
+    };
+
+    // Wenn ein Feld gefüllt ist, aber nicht parsebar → Fehler anzeigen
+    const invalids = [];
+    if (happy_link && !parsed.happy_uri) invalids.push("Happy");
+    if (sad_link && !parsed.sad_uri) invalids.push("Sad");
+    if (neutral_link && !parsed.neutral_uri) invalids.push("Neutral");
+    if (angry_link && !parsed.angry_uri) invalids.push("Angry");
+
+    if (invalids.length) {
+      statusEl.textContent = "Ungültige Links: " + invalids.join(", ") + ". Bitte Spotify Playlist Link oder spotify:playlist:... nutzen.";
+      statusEl.className = "hint bad";
+      return;
+    }
+
+    // Wenn ALLE leer → storage entfernen (Default)
+    const allEmpty = !happy_link && !sad_link && !neutral_link && !angry_link;
+    if (allEmpty) {
+      localStorage.removeItem("custom_playlists");
+      statusEl.textContent = "Alles leer → Default-Playlists aktiv.";
+      statusEl.className = "hint ok";
+      return;
+    }
+
+    localStorage.setItem("custom_playlists", JSON.stringify(parsed));
+    statusEl.textContent = "Gespeichert ✅ (wird in Auto & Manual benutzt).";
+    statusEl.className = "hint ok";
+  }
+
+  function resetToDefault() {
+    localStorage.removeItem("custom_playlists");
+    inputs.happy.value = "";
+    inputs.sad.value = "";
+    inputs.neutral.value = "";
+    inputs.angry.value = "";
+    statusEl.textContent = "Zurückgesetzt → Default-Playlists aktiv.";
+    statusEl.className = "hint ok";
+  }
+
+  document.getElementById("savePlaylistsBtn").addEventListener("click", saveToStorage);
+  document.getElementById("loadPlaylistsBtn").addEventListener("click", writeInputsFromStorage);
+  document.getElementById("resetPlaylistsBtn").addEventListener("click", resetToDefault);
+
+  // Initial laden
+  writeInputsFromStorage();
+</script>
 </body>
 </html>
-
