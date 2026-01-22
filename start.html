@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8" />
-  <title>Modus auswählen</title>
+  <title>Vibecheck</title>
 
   <script>
     // Wenn kein Token → zurück zum Login
@@ -23,9 +23,35 @@
     }
     .container{ width:min(900px,100%); }
 
-    h1{ margin:0 0 .5rem 0; font-size:1.8rem; }
-    p{ margin:0 0 1.25rem 0; color:#9ca3af; }
+    /* ===== LOGO / BRAND ===== */
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:.75rem;
+      margin-bottom:.25rem;
+    }
+    .logo{
+      width:48px;
+      height:48px;
+      border-radius:14px;
+      background: radial-gradient(circle at top left, #3b82f6, #22c55e);
+      display:grid;
+      place-items:center;
+      font-size:1.6rem;
+      box-shadow: 0 0 20px rgba(59,130,246,.35);
+    }
+    .title{
+      font-size:2rem;
+      font-weight:900;
+      letter-spacing:.03em;
+    }
+    .subtitle{
+      color:#9ca3af;
+      margin:0 0 1.25rem 3.1rem;
+      font-size:.95rem;
+    }
 
+    /* ===== MODUS CARDS ===== */
     .grid{
       display:grid;
       grid-template-columns:repeat(2, minmax(0, 1fr));
@@ -46,6 +72,7 @@
     }
     .card-btn:hover{ transform:translateY(-2px); border-color:#3b82f6; }
     .card-btn h2{ margin:0 0 .5rem 0; font-size:1.25rem; }
+
     .tag{
       display:inline-block;
       padding:.25rem .5rem;
@@ -55,11 +82,15 @@
       color:#9ca3af;
       margin-bottom:.75rem;
     }
+
     .card-btn ul{ margin:.75rem 0 0 1rem; color:#9ca3af; }
 
-    @media (max-width:720px){ .grid{ grid-template-columns:1fr; } }
+    @media (max-width:720px){
+      .grid{ grid-template-columns:1fr; }
+      .subtitle{ margin-left:0; }
+    }
 
-    /* Accordion / Dropdown */
+    /* ===== ACCORDION ===== */
     details{
       margin-top: 1rem;
       background:#020617;
@@ -79,6 +110,7 @@
       font-weight:800;
     }
     summary::-webkit-details-marker{ display:none; }
+
     .summary-left{
       display:flex;
       align-items:center;
@@ -100,6 +132,7 @@
       border-top: 1px solid #0f172a;
     }
 
+    /* ===== INPUTS ===== */
     .hint{ color:#9ca3af; font-size:.9rem; margin:.25rem 0 0 0; }
     .ok{ color:#34d399; }
     .bad{ color:#fca5a5; }
@@ -140,6 +173,7 @@
     .btn.secondary{ opacity:.9; }
     .btn.danger{ border-color:#5b1b1b; background:#1a0b0b; }
 
+    /* ===== FOOTER ===== */
     .logout{
       margin-top:1rem;
       display:inline-block;
@@ -147,6 +181,7 @@
       text-decoration:underline;
       cursor:pointer;
     }
+
     code{
       background:#0b1020;
       border:1px solid #0f172a;
@@ -159,9 +194,17 @@
 
 <body>
 <div class="container">
-  <h1>Wähle deinen Modus</h1>
-  <p>Du bist bei Spotify angemeldet. Wähle, wie Emotionen genutzt werden sollen.</p>
 
+  <!-- LOGO / BRAND -->
+  <div class="brand">
+    <div class="logo">🎧</div>
+    <div class="title">Vibecheck</div>
+  </div>
+  <div class="subtitle">
+    Check deinen Vibe und lass deine Emotionen deine Musik steuern ✨
+  </div>
+
+  <!-- MODUS AUSWAHL -->
   <div class="grid">
     <button class="card-btn" onclick="
         sessionStorage.setItem('selected_mode','manual');
@@ -191,7 +234,7 @@
     </button>
   </div>
 
-  <!-- ✅ Aufklappmenü statt großer Box -->
+  <!-- PLAYLIST ACCORDION -->
   <details id="playlistDetails">
     <summary>
         <span class="summary-left">
@@ -203,8 +246,8 @@
 
     <div class="details-body">
       <p class="hint" style="margin-top:.75rem;">
-        Akzeptiert: <code>spotify:playlist:ID</code> oder <code>https://open.spotify.com/playlist/ID</code> (auch mit <code>?si=</code>).
-        Wenn ein Feld leer ist, wird die Default-Playlist genutzt.
+        Akzeptiert: <code>spotify:playlist:ID</code> oder
+        <code>https://open.spotify.com/playlist/ID</code>
       </p>
 
       <div class="inputs">
@@ -212,17 +255,14 @@
           <label>😊 Happy</label>
           <input id="pl_happy" placeholder="Spotify Playlist Link/URI (optional)" />
         </div>
-
         <div>
           <label>😢 Sad</label>
           <input id="pl_sad" placeholder="Spotify Playlist Link/URI (optional)" />
         </div>
-
         <div>
           <label>😐 Neutral</label>
           <input id="pl_neutral" placeholder="Spotify Playlist Link/URI (optional)" />
         </div>
-
         <div>
           <label>😡 Angry</label>
           <input id="pl_angry" placeholder="Spotify Playlist Link/URI (optional)" />
@@ -238,6 +278,7 @@
     </div>
   </details>
 
+  <!-- LOGOUT -->
   <span class="logout" onclick="
       sessionStorage.removeItem('spotify_access_token');
       sessionStorage.removeItem('code_verifier');
@@ -259,25 +300,23 @@
   const statusEl = document.getElementById("playlistStatus");
   const detailsEl = document.getElementById("playlistDetails");
 
-  function toPlaylistUri(value) {
-    if (!value) return "";
+  function toPlaylistUri(value){
+    if(!value) return "";
     const v = value.trim();
-
-    if (v.startsWith("spotify:playlist:")) return v;
+    if(v.startsWith("spotify:playlist:")) return v;
 
     const m = v.match(/open\.spotify\.com\/playlist\/([a-zA-Z0-9]+)(\?|$)/);
-    if (m && m[1]) return `spotify:playlist:${m[1]}`;
-
+    if(m && m[1]) return `spotify:playlist:${m[1]}`;
     return "";
   }
 
-  function loadFromStorage() {
+  function loadFromStorage(){
     const raw = localStorage.getItem("custom_playlists");
-    if (!raw) return null;
-    try { return JSON.parse(raw); } catch { return null; }
+    if(!raw) return null;
+    try{ return JSON.parse(raw); } catch{ return null; }
   }
 
-  function writeInputsFromStorage() {
+  function writeInputsFromStorage(){
     const saved = loadFromStorage();
     const data = saved || {};
     inputs.happy.value = data.happy_link || "";
@@ -291,7 +330,7 @@
     statusEl.className = "hint " + (saved ? "ok" : "");
   }
 
-  function saveToStorage() {
+  function saveToStorage(){
     const happy_link = inputs.happy.value.trim();
     const sad_link = inputs.sad.value.trim();
     const neutral_link = inputs.neutral.value.trim();
@@ -303,23 +342,23 @@
       neutral_uri: toPlaylistUri(neutral_link),
       angry_uri: toPlaylistUri(angry_link),
 
-      happy_link, sad_link, neutral_link, angry_link,
+      happy_link, sad_link, neutral_link, angry_link
     };
 
     const invalids = [];
-    if (happy_link && !parsed.happy_uri) invalids.push("Happy");
-    if (sad_link && !parsed.sad_uri) invalids.push("Sad");
-    if (neutral_link && !parsed.neutral_uri) invalids.push("Neutral");
-    if (angry_link && !parsed.angry_uri) invalids.push("Angry");
+    if(happy_link && !parsed.happy_uri) invalids.push("Happy");
+    if(sad_link && !parsed.sad_uri) invalids.push("Sad");
+    if(neutral_link && !parsed.neutral_uri) invalids.push("Neutral");
+    if(angry_link && !parsed.angry_uri) invalids.push("Angry");
 
-    if (invalids.length) {
-      statusEl.textContent = "Ungültige Links: " + invalids.join(", ") + ".";
+    if(invalids.length){
+      statusEl.textContent = "Ungültige Links: " + invalids.join(", ");
       statusEl.className = "hint bad";
       return;
     }
 
     const allEmpty = !happy_link && !sad_link && !neutral_link && !angry_link;
-    if (allEmpty) {
+    if(allEmpty){
       localStorage.removeItem("custom_playlists");
       statusEl.textContent = "Alles leer → Default-Playlists aktiv.";
       statusEl.className = "hint ok";
@@ -327,18 +366,18 @@
     }
 
     localStorage.setItem("custom_playlists", JSON.stringify(parsed));
-    statusEl.textContent = "Gespeichert ✅ (wird in Auto & Manual genutzt).";
+    statusEl.textContent = "Gespeichert ✅";
     statusEl.className = "hint ok";
-    detailsEl.open = false; // klappt nach Speichern zu
+    detailsEl.open = false;
   }
 
-  function resetToDefault() {
+  function resetToDefault(){
     localStorage.removeItem("custom_playlists");
     inputs.happy.value = "";
     inputs.sad.value = "";
     inputs.neutral.value = "";
     inputs.angry.value = "";
-    statusEl.textContent = "Zurückgesetzt → Default-Playlists aktiv.";
+    statusEl.textContent = "Zurückgesetzt → Default aktiv.";
     statusEl.className = "hint ok";
     detailsEl.open = false;
   }
@@ -347,7 +386,6 @@
   document.getElementById("loadPlaylistsBtn").addEventListener("click", writeInputsFromStorage);
   document.getElementById("resetPlaylistsBtn").addEventListener("click", resetToDefault);
 
-  // Initial laden
   writeInputsFromStorage();
 </script>
 </body>
