@@ -5,24 +5,242 @@
     <title>Manuelle Emotion</title>
 
     <script>
-        if (!sessionStorage.getItem("spotify_access_token")) {
-            window.location = "auth.html";
-        }
+        const token = sessionStorage.getItem("spotify_access_token");
+        const mode = sessionStorage.getItem("selected_mode");
+
+        if (!token) window.location = "auth.html";
+        if (mode !== "manual") window.location = "start.html";
     </script>
 
     <style>
-        body { font-family: system-ui; background:#050816; color:#e5e7eb; padding:2rem; }
-        a { color:#3b82f6; }
-        .box { margin-top:1rem; background:#020617; border:1px solid #0f172a; border-radius:1rem; padding:1.25rem; max-width:800px; }
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #050816;
+            color: #e5e7eb;
+            padding: 2rem;
+        }
+
+        a { color: #3b82f6; text-decoration: none; }
+
+        .row {
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 1.25rem;
+            align-items: start;
+            margin-top: 1rem;
+        }
+
+        .card {
+            background: #020617;
+            border: 1px solid #0f172a;
+            border-radius: 1rem;
+            padding: 1.25rem;
+        }
+
+        .btn {
+            background: #0f172a;
+            color: #e5e7eb;
+            border: 1px solid #1f2a44;
+            border-radius: 0.75rem;
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .btn:disabled {
+            opacity: .6;
+            cursor: not-allowed;
+        }
+
+        .muted { color: #9ca3af; }
+
+        video {
+            width: 100%;
+            border-radius: 0.75rem;
+            background: #000;
+            border: 1px solid #0f172a;
+        }
+
+        .big {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin: .25rem 0 .75rem 0;
+        }
+
+        .pill {
+            display: inline-block;
+            padding: .25rem .5rem;
+            border-radius: 999px;
+            background: #0f172a;
+            color: #9ca3af;
+            font-size: .8rem;
+            margin-left: .5rem;
+        }
+
+        /* Mini-Player UI (IDs kompatibel zu app.js) */
+        .player {
+            display: grid;
+            grid-template-columns: 96px 1fr;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        #trackImage {
+            width: 96px; height: 96px; object-fit: cover;
+            border-radius: 0.75rem;
+            border: 1px solid #0f172a;
+            background: #000;
+        }
+
+        .controls {
+            display: flex;
+            gap: .5rem;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-top: .75rem;
+        }
+
+        .timeline {
+            display: grid;
+            grid-template-columns: 56px 1fr 56px;
+            gap: .75rem;
+            align-items: center;
+            margin-top: .75rem;
+        }
+
+        input[type="range"] { width: 100%; }
+
+        pre {
+            white-space: pre-wrap;
+            background: #000814;
+            border: 1px solid #0f172a;
+            border-radius: 0.75rem;
+            padding: 0.75rem;
+            margin-top: 1rem;
+            max-height: 260px;
+            overflow: auto;
+        }
+
+        @media (max-width: 900px) {
+            .row { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
-<body>
-<a href="start.html">← Zurück zur Modus-Auswahl</a>
 
-<div class="box">
-    <h1>Manuelle Emotion</h1>
-    <p>Hier kommt später: Button drücken → 5 Sekunden Emotion → passende Playlist spielen.</p>
-    <p><b>Status:</b> Noch nicht implementiert (wie gewünscht).</p>
+<body>
+<a href="start.html" onclick="sessionStorage.removeItem('selected_mode')">← Zurück zur Modus-Auswahl</a>
+
+<h1 style="margin: .75rem 0 0 0;">Manuelle Emotion</h1>
+<p class="muted" style="margin: .25rem 0 1rem 0;">
+    Drücke den Button, zeige 5 Sekunden eine Emotion – danach wird die passende Playlist gestartet und bleibt aktiv bis zur nächsten Messung.
+    <span class="pill" id="currentModePill">Modus: Manual</span>
+</p>
+
+<div class="row">
+    <!-- Kamera + Messung -->
+    <div class="card">
+        <div class="big">Kamera</div>
+        <video id="video" autoplay muted playsinline></video>
+
+        <div style="margin-top: 1rem;">
+            <button class="btn" id="measureBtn">🎭 Emotion messen (5s)</button>
+            <div class="muted" id="measureStatus" style="margin-top: .5rem;">
+                Status: bereit
+            </div>
+        </div>
+
+        <div class="muted" style="margin-top: .75rem;">
+            Tipp: Halte dein Gesicht gut im Bild und bleib während der 5 Sekunden möglichst konstant.
+        </div>
+    </div>
+
+    <!-- Player -->
+    <div class="card">
+        <div class="big">Player</div>
+
+        <div class="player">
+            <img id="trackImage" alt="cover" />
+            <div>
+                <div id="trackTitle" style="font-weight: 800;">—</div>
+                <div id="trackArtist" class="muted">—</div>
+
+                <div class="controls">
+                    <button class="btn" id="prevBtn" disabled>⏮️</button>
+                    <button class="btn" id="startBtn" disabled>▶️</button>
+                    <button class="btn" id="nextBtn" disabled>⏭️</button>
+
+                    <span class="muted">Lautstärke:</span>
+                    <input id="volumeSlider" type="range" min="0" max="100" value="50" disabled />
+                    <span id="volumeValue" class="muted">50%</span>
+                </div>
+
+                <div class="timeline">
+                    <div id="currentTime" class="muted">0:00</div>
+                    <input id="progressBar" type="range" min="0" max="1" value="0" />
+                    <div id="durationTime" class="muted">0:00</div>
+                </div>
+            </div>
+        </div>
+
+        <pre id="log"></pre>
+    </div>
 </div>
+
+<!-- Spotify SDK -->
+<script src="https://sdk.scdn.co/spotify-player.js"></script>
+
+<!-- face-api + camera.js (wie bei dir im Projekt) -->
+<script defer src="face-api.min.js"></script>
+<script defer src="camera.js"></script>
+
+<!-- app.js (steuert Player + Playlistwechsel) -->
+<script defer src="app.js"></script>
+
+<!-- Manual-Logic: 5s messen und Playlist setzen -->
+<script>
+    const measureBtn = document.getElementById("measureBtn");
+    const statusEl = document.getElementById("measureStatus");
+
+    function sleep(ms) {
+        return new Promise((r) => setTimeout(r, ms));
+    }
+
+    async function doManualMeasurement() {
+        if (!sessionStorage.getItem("spotify_access_token")) {
+            window.location = "auth.html";
+            return;
+        }
+
+        if (typeof window.resetEmotionStats !== "function" || typeof window.getDominantEmotion !== "function") {
+            statusEl.textContent = "Status: Kamera/Emotion-Module nicht bereit (camera.js?)";
+            return;
+        }
+
+        measureBtn.disabled = true;
+
+        // Reset und 5 Sekunden sammeln
+        window.resetEmotionStats();
+
+        for (let i = 5; i >= 1; i--) {
+            statusEl.textContent = `Status: messen... (${i}s)`;
+            await sleep(1000);
+        }
+
+        const dominant = window.getDominantEmotion(); // z.B. "happy" | "sad" | "neutral" | "angry"
+        statusEl.textContent = dominant
+            ? `Status: erkannt → ${dominant} ✅ (Playlist wird gesetzt)`
+            : `Status: keine Emotion erkannt ❌ (bitte erneut versuchen)`;
+
+        if (dominant && typeof window.applyEmotionNow === "function") {
+            // applyEmotionNow kommt aus app.js (wir machen es dort global verfügbar)
+            await window.applyEmotionNow(dominant);
+        }
+
+        measureBtn.disabled = false;
+        statusEl.textContent = "Status: bereit";
+    }
+
+    measureBtn.addEventListener("click", doManualMeasurement);
+</script>
 </body>
 </html>
