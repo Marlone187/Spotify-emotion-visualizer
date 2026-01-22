@@ -18,178 +18,456 @@
 
   <meta charset="utf-8" />
   <title>Spotify Emotion Player</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <script>
-    // Wenn kein Access Token vorhanden → erst zur Auth-Seite
     if (!sessionStorage.getItem("spotify_access_token")) {
       window.location = "auth.html";
     }
   </script>
 
+  <!-- Icons laden -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
   <script src="https://sdk.scdn.co/spotify-player.js"></script>
 
   <style>
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #050816;
-      color: #e5e7eb;
-      padding: 1.5rem;
+    :root {
+      /* Standardfarbe (wird per JS geändert) */
+      --theme-color: #3b82f6;
+      --bg-dark: #050816;
+      --glass-bg: rgba(255, 255, 255, 0.05);
+      --glass-border: rgba(255, 255, 255, 0.1);
     }
-    h1 {
-      margin-bottom: .5rem;
-    }
-    button {
-      padding: .5rem 1rem;
-      margin: .25rem;
-      border-radius: .5rem;
-      border: none;
-      cursor: pointer;
-      font-weight: 600;
-    }
-    #startBtn { background: #3b82f6; color:#e5e7eb; }
-    #prevBtn  { background: #0f172a; color:#e5e7eb; }
-    #nextBtn  { background: #0f172a; color:#e5e7eb; }
-    .emotion-btn { background:#334155; color:#e5e7eb; }
-    .emotion-btn:hover { background:#475569; }
 
-    /* Spotify Now Playing */
-    .now-playing {
-      margin-top: 1.5rem;
-      display: flex;
-      gap: 1rem;
-      align-items: center;
-      background: #020617;
-      padding: .75rem;
-      border-radius: .75rem;
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
     }
-    .now-playing img {
-      width: 72px;
-      height: 72px;
-      border-radius: .5rem;
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: radial-gradient(circle at 50% 120%, var(--theme-color), var(--bg-dark) 60%);
+      color: #e5e7eb;
+      height: 100vh;
+      overflow: hidden;
+      transition: background 1.5s ease-in-out;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Hintergrund Visualizer */
+    #wave-canvas {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      width: 100%;
+      height: 300px;
+      transform: translateY(-50%);
+      z-index: -1;
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    /* Oben Links: Home Button */
+    .top-nav {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      z-index: 10;
+    }
+    .home-btn {
+      background: var(--theme-color);
+      color: white;
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      text-decoration: none;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      transition: transform 0.2s, background 1.5s;
+    }
+    .home-btn:hover {
+      transform: scale(1.05);
+    }
+
+    /* Hauptbereich Container */
+    .main-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      max-width: 600px;
+      position: relative;
+      z-index: 1;
+      padding-top: 10px;
+    }
+
+    /* Kamera Sektion */
+    #camera-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      position: relative;
+    }
+
+    .video-wrapper {
+      position: relative;
+      padding: 4px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 12px;
+      box-shadow: 0 0 20px var(--theme-color);
+      transition: box-shadow 1.5s ease;
+    }
+
+    #video-feed {
+      display: block;
+      border-radius: 8px;
+      width: 260px;
+      height: 195px;
       object-fit: cover;
-      background: #0f172a;
+      transform: scaleX(-1); /* Spiegeln */
+      background: #000;
+    }
+
+    /* Emotions-Farbblöcke */
+    .emotion-bars {
+      display: flex;
+      width: 100%;
+      height: 6px;
+      margin-top: 4px;
+      border-radius: 0 0 8px 8px;
+      overflow: hidden;
+    }
+    .bar { flex: 1; height: 100%; }
+    .bar.happy { background: #fbbf24; }
+    .bar.sad { background: #60a5fa; }
+    .bar.angry { background: #ef4444; }
+    .bar.neutral { background: #9ca3af; }
+
+    /* Aktueller Emotions-Text */
+    #emotion-container {
+      margin-top: 8px;
+      font-size: 0.85rem;
+      background: rgba(0,0,0,0.4);
+      padding: 4px 12px;
+      border-radius: 20px;
+      text-transform: capitalize;
+      backdrop-filter: blur(4px);
+    }
+
+    /* Track Cover & Titel */
+    .track-display {
+      text-align: center;
+      margin-bottom: 1.5rem;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    #trackImage {
+      width: 200px;
+      height: 200px;
+      border-radius: 12px;
+      object-fit: cover;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+      margin-bottom: 1rem;
+      background: #1e293b;
+      transition: transform 0.3s ease;
+    }
+
+    .track-info h2 {
+      font-size: 1.4rem;
+      margin-bottom: 0.25rem;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 90%;
+    }
+    .track-info p {
+      color: #cbd5e1;
+      font-size: 0.95rem;
+    }
+
+    /* Player Controls */
+    .player-controls-container {
+      background: var(--glass-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--glass-border);
+      padding: 1.25rem;
+      border-radius: 24px;
+      width: 90%;
+      max-width: 450px;
+      margin-bottom: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     }
 
     .progress-row {
       display: flex;
       align-items: center;
-      gap: .5rem;
-      font-size: .75rem;
-      color: #9ca3af;
+      gap: 10px;
+      font-size: 0.75rem;
+      color: #cbd5e1;
+      font-weight: 500;
     }
 
     #progressBar {
       flex: 1;
       height: 4px;
-      border-radius: 999px;
-      background: #1f2937;
+      -webkit-appearance: none;
+      appearance: none;
+      background: rgba(255,255,255,0.2);
+      border-radius: 99px;
+      cursor: pointer;
     }
     #progressBar::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
       width: 12px;
       height: 12px;
-      border-radius: 999px;
-      background: #22c55e;
+      background: var(--theme-color);
+      border-radius: 50%;
+      transition: background 1.5s;
     }
 
-    /* Lautstärke */
-    .volume-float {
-      position: fixed;
-      right: 1rem;
-      bottom: 1rem;
-      background: rgba(15, 23, 42, 0.95);
-      border-radius: 999px;
-      padding: .35rem .6rem;
+    .buttons-row {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 2rem;
+    }
+
+    button {
+      background: transparent;
+      border: none;
+      color: white;
+      cursor: pointer;
+      font-size: 1.4rem;
+      padding: 10px;
+      transition: transform 0.1s, color 0.2s;
       display: flex;
       align-items: center;
-      gap: .35rem;
-      box-shadow: 0 10px 30px rgba(0,0,0,.4);
-      font-size: .75rem;
+      justify-content: center;
+    }
+    button:hover:not(:disabled) { transform: scale(1.1); color: var(--theme-color); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    #startBtn {
+      font-size: 1.8rem;
+      background: var(--theme-color);
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      transition: background 1.5s, transform 0.1s;
+    }
+    #startBtn:hover:not(:disabled) {
+      color: white;
+      filter: brightness(1.2);
     }
 
-    /* Kamera-UI */
-    #camera-section {
-      margin-top: 2rem;
+    /* Lautstärke Unten Rechts */
+    .volume-container {
+      position: fixed;
+      bottom: 25px;
+      right: 25px;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(10px);
+      padding: 8px 16px;
+      border-radius: 30px;
       display: flex;
-      gap: 1rem;
-      align-items: flex-start;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid var(--glass-border);
+      z-index: 20;
     }
-    #video-feed {
-      border-radius: .5rem;
-      background: #020617;
-      border: 1px solid #1f2937;
+    .volume-container i { font-size: 0.9rem; }
+    .volume-container input {
+      width: 80px;
+      height: 4px;
+      -webkit-appearance: none;
+      background: rgba(255,255,255,0.3);
+      border-radius: 2px;
+      cursor: pointer;
+    }
+    .volume-container input::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 10px;
+      height: 10px;
+      background: white;
+      border-radius: 50%;
     }
 
-    pre {
-      margin-top: 1.5rem;
-      padding: .75rem;
-      background: #020617;
-      border-radius: .5rem;
-      max-height: 220px;
-      overflow-y: auto;
-      white-space: pre-wrap;
-      font-size: .85rem;
+    /* Versteckte Elemente für Kompatibilität */
+    .debug-hidden {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+      height: 0;
+      width: 0;
+      overflow: hidden;
     }
   </style>
 </head>
 
 <body>
 
-<h1>Spotify Emotion Player</h1>
+<!-- 1. Hintergrund Canvas -->
+<canvas id="wave-canvas"></canvas>
 
-<button id="prevBtn" disabled>⏮</button>
-<button id="startBtn" disabled>▶️</button>
-<button id="nextBtn" disabled>⏭</button>
+<!-- 2. Home Button -->
+<nav class="top-nav">
+  <a href="start.html" class="home-btn" title="Zurück zum Start">
+    <i class="fas fa-home"></i>
+  </a>
+</nav>
 
-<!-- Now Playing -->
-<div class="now-playing">
-  <img id="trackImage" src="" alt="Cover" />
-  <div class="now-playing-info">
-    <div id="trackTitle" class="track-title">–</div>
-    <div id="trackArtist" class="track-artist">–</div>
+<!-- 3. Hauptinhalt -->
+<div class="main-container">
 
+  <!-- Kamera Bereich -->
+  <div id="camera-section">
+    <div class="video-wrapper">
+      <video id="video-feed" width="320" height="240" autoplay muted playsinline></video>
+      <div class="emotion-bars">
+        <div class="bar angry"></div>
+        <div class="bar sad"></div>
+        <div class="bar neutral"></div>
+        <div class="bar happy"></div>
+      </div>
+    </div>
+    <div id="emotion-container">
+      <span id="emotion-text">Warte auf Kamera...</span>
+    </div>
+  </div>
+
+  <!-- Cover & Info -->
+  <div class="track-display">
+    <img id="trackImage" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Cover" />
+    <div class="track-info">
+      <h2 id="trackTitle">Nicht verbunden</h2>
+      <p id="trackArtist">–</p>
+    </div>
+  </div>
+
+  <!-- Player Controls -->
+  <div class="player-controls-container">
     <div class="progress-row">
       <span id="currentTime">0:00</span>
       <input type="range" id="progressBar" min="0" max="0" value="0" disabled />
       <span id="durationTime">0:00</span>
     </div>
+
+    <div class="buttons-row">
+      <button id="prevBtn" disabled><i class="fas fa-step-backward"></i></button>
+      <button id="startBtn" disabled><i class="fas fa-play"></i></button>
+      <button id="nextBtn" disabled><i class="fas fa-step-forward"></i></button>
+    </div>
   </div>
+
 </div>
 
-<!-- Lautstärke -->
-<div class="volume-float">
-  <span>🔊</span>
+<!-- 4. Lautstärke -->
+<div class="volume-container">
+  <i class="fas fa-volume-up"></i>
   <input type="range" id="volumeSlider" min="0" max="100" value="50" disabled />
-  <span id="volumeValue">50%</span>
+  <span id="volumeValue" style="font-size: 0.75rem; width: 28px; text-align:right;">50%</span>
 </div>
 
-<h2>Emotion (manuell)</h2>
-<button class="emotion-btn" data-emotion="happy">Happy</button>
-<button class="emotion-btn" data-emotion="sad">Sad</button>
-<button class="emotion-btn" data-emotion="neutral">Neutral</button>
-<button class="emotion-btn" data-emotion="angry">Angry</button>
-
-<!-- Kamera-Emotionserkennung -->
-<h2>Emotionserkennung mit Kamera</h2>
-
-<div id="camera-section">
-  <video id="video-feed" width="320" height="240" autoplay muted playsinline></video>
-
-  <div id="emotion-container">
-    Aktuelle Emotion:<br>
-    <span id="emotion-text" style="font-weight:600;">Noch keine Daten…</span>
-  </div>
+<!-- 5. Versteckte Elemente (Logik-Erhalt) -->
+<div class="debug-hidden">
+  <button class="emotion-btn" data-emotion="happy">Happy</button>
+  <button class="emotion-btn" data-emotion="sad">Sad</button>
+  <button class="emotion-btn" data-emotion="neutral">Neutral</button>
+  <button class="emotion-btn" data-emotion="angry">Angry</button>
+  <pre id="log"></pre>
 </div>
 
-<pre id="log"></pre>
-
-<!-- face-api -->
+<!-- Scripts -->
 <script src="face-api.min.js"></script>
-
-<!-- Kamera-Emotionserkennung -->
 <script src="camera.js"></script>
-
-<!-- Spotify Player Logik -->
 <script type="module" src="app.js"></script>
+
+<!-- UI Animation & Logik -->
+<script>
+  // Wave Animation
+  const canvas = document.getElementById('wave-canvas');
+  const ctx = canvas.getContext('2d');
+  let width, height;
+
+  function resize() {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = 300;
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  let time = 0;
+  function animateWave() {
+    ctx.clearRect(0, 0, width, height);
+    const computedStyle = getComputedStyle(document.body);
+    const themeColor = computedStyle.getPropertyValue('--theme-color').trim();
+
+    ctx.beginPath();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = themeColor;
+
+    for (let x = 0; x < width; x++) {
+      const y = height / 2 +
+              Math.sin(x * 0.01 + time) * 30 * Math.sin(x * 0.005 + time * 2) +
+              Math.sin(x * 0.02 + time * 3) * 10;
+      if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.strokeStyle = "rgba(255,255,255,0.2)";
+    for (let x = 0; x < width; x++) {
+      const y = height / 2 + Math.sin(x * 0.015 - time) * 40;
+      if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    time += 0.05;
+    requestAnimationFrame(animateWave);
+  }
+  animateWave();
+
+  // Farbe ändern bei Emotion
+  const emotionTextEl = document.getElementById('emotion-text');
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      const text = mutation.target.textContent.toLowerCase();
+      const root = document.documentElement;
+
+      if (text.includes('happy') || text.includes('glücklich')) {
+        root.style.setProperty('--theme-color', '#fbbf24'); // Orange/Gelb
+      } else if (text.includes('sad') || text.includes('traurig')) {
+        root.style.setProperty('--theme-color', '#60a5fa'); // Blau
+      } else if (text.includes('angry') || text.includes('wütend')) {
+        root.style.setProperty('--theme-color', '#ef4444'); // Rot
+      } else if (text.includes('neutral')) {
+        root.style.setProperty('--theme-color', '#9ca3af'); // Grau
+      }
+    });
+  });
+  observer.observe(emotionTextEl, { characterData: true, subtree: true, childList: true });
+</script>
 
 </body>
 </html>
