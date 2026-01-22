@@ -5,7 +5,6 @@
   <title>Vibecheck</title>
 
   <script>
-    // Wenn kein Token → zurück zum Login
     if (!sessionStorage.getItem("spotify_access_token")) {
       window.location = "auth.html";
     }
@@ -23,42 +22,22 @@
     }
     .container{ width:min(900px,100%); }
 
-    /* ===== LOGO / BRAND ===== */
-    .brand{
-      display:flex;
-      align-items:center;
-      gap:.75rem;
-      margin-bottom:.25rem;
-    }
+    .brand{ display:flex; align-items:center; gap:.75rem; margin-bottom:.25rem; }
     .logo{
-      width:48px;
-      height:48px;
-      border-radius:14px;
+      width:48px; height:48px; border-radius:14px;
       background: radial-gradient(circle at top left, #3b82f6, #22c55e);
-      display:grid;
-      place-items:center;
-      font-size:1.6rem;
+      display:grid; place-items:center; font-size:1.6rem;
       box-shadow: 0 0 20px rgba(59,130,246,.35);
     }
-    .title{
-      font-size:2rem;
-      font-weight:900;
-      letter-spacing:.03em;
-    }
-    .subtitle{
-      color:#9ca3af;
-      margin:0 0 1.25rem 3.1rem;
-      font-size:.95rem;
-    }
+    .title{ font-size:2rem; font-weight:900; letter-spacing:.03em; }
+    .subtitle{ color:#9ca3af; margin:0 0 1.25rem 3.1rem; font-size:.95rem; }
 
-    /* ===== MODUS CARDS ===== */
     .grid{
       display:grid;
       grid-template-columns:repeat(2, minmax(0, 1fr));
       gap:1rem;
       margin-top:.5rem;
     }
-
     .card-btn{
       background:#020617;
       border:1px solid #0f172a;
@@ -72,7 +51,6 @@
     }
     .card-btn:hover{ transform:translateY(-2px); border-color:#3b82f6; }
     .card-btn h2{ margin:0 0 .5rem 0; font-size:1.25rem; }
-
     .tag{
       display:inline-block;
       padding:.25rem .5rem;
@@ -82,7 +60,6 @@
       color:#9ca3af;
       margin-bottom:.75rem;
     }
-
     .card-btn ul{ margin:.75rem 0 0 1rem; color:#9ca3af; }
 
     @media (max-width:720px){
@@ -90,7 +67,6 @@
       .subtitle{ margin-left:0; }
     }
 
-    /* ===== ACCORDION ===== */
     details{
       margin-top: 1rem;
       background:#020617;
@@ -110,15 +86,9 @@
       font-weight:800;
     }
     summary::-webkit-details-marker{ display:none; }
-
-    .summary-left{
-      display:flex;
-      align-items:center;
-      gap:.6rem;
-    }
+    .summary-left{ display:flex; align-items:center; gap:.6rem; }
     .chev{
-      width: 10px;
-      height: 10px;
+      width: 10px; height: 10px;
       border-right: 2px solid #9ca3af;
       border-bottom: 2px solid #9ca3af;
       transform: rotate(-45deg);
@@ -132,16 +102,11 @@
       border-top: 1px solid #0f172a;
     }
 
-    /* ===== INPUTS ===== */
     .hint{ color:#9ca3af; font-size:.9rem; margin:.25rem 0 0 0; }
     .ok{ color:#34d399; }
     .bad{ color:#fca5a5; }
 
-    .inputs{
-      display:grid;
-      gap:.75rem;
-      margin-top:.9rem;
-    }
+    .inputs{ display:grid; gap:.75rem; margin-top:.9rem; }
     label{ font-size:.9rem; color:#cbd5e1; display:block; margin-bottom:.35rem; }
     input{
       width:100%;
@@ -173,7 +138,6 @@
     .btn.secondary{ opacity:.9; }
     .btn.danger{ border-color:#5b1b1b; background:#1a0b0b; }
 
-    /* ===== FOOTER ===== */
     .logout{
       margin-top:1rem;
       display:inline-block;
@@ -194,8 +158,6 @@
 
 <body>
 <div class="container">
-
-  <!-- LOGO / BRAND -->
   <div class="brand">
     <div class="logo">🎧</div>
     <div class="title">Vibecheck</div>
@@ -204,7 +166,6 @@
     Check deinen Vibe und lass deine Emotionen deine Musik steuern ✨
   </div>
 
-  <!-- MODUS AUSWAHL -->
   <div class="grid">
     <button class="card-btn" onclick="
         sessionStorage.setItem('selected_mode','manual');
@@ -234,7 +195,6 @@
     </button>
   </div>
 
-  <!-- PLAYLIST ACCORDION -->
   <details id="playlistDetails">
     <summary>
         <span class="summary-left">
@@ -246,8 +206,8 @@
 
     <div class="details-body">
       <p class="hint" style="margin-top:.75rem;">
-        Akzeptiert: <code>spotify:playlist:ID</code> oder
-        <code>https://open.spotify.com/playlist/ID</code>
+        Akzeptiert: <code>spotify:playlist:ID</code> oder <code>https://open.spotify.com/playlist/ID</code>.
+        Wenn ein Feld leer ist, wird die Default-Playlist genutzt.
       </p>
 
       <div class="inputs">
@@ -278,7 +238,6 @@
     </div>
   </details>
 
-  <!-- LOGOUT -->
   <span class="logout" onclick="
       sessionStorage.removeItem('spotify_access_token');
       sessionStorage.removeItem('code_verifier');
@@ -304,7 +263,6 @@
     if(!value) return "";
     const v = value.trim();
     if(v.startsWith("spotify:playlist:")) return v;
-
     const m = v.match(/open\.spotify\.com\/playlist\/([a-zA-Z0-9]+)(\?|$)/);
     if(m && m[1]) return `spotify:playlist:${m[1]}`;
     return "";
@@ -324,9 +282,7 @@
     inputs.neutral.value = data.neutral_link || "";
     inputs.angry.value = data.angry_link || "";
 
-    statusEl.textContent = saved
-            ? "Custom-Playlists geladen."
-            : "Keine Custom-Playlists gesetzt (Default aktiv).";
+    statusEl.textContent = saved ? "Custom-Playlists geladen." : "Keine Custom-Playlists gesetzt (Default aktiv).";
     statusEl.className = "hint " + (saved ? "ok" : "");
   }
 
@@ -341,7 +297,6 @@
       sad_uri: toPlaylistUri(sad_link),
       neutral_uri: toPlaylistUri(neutral_link),
       angry_uri: toPlaylistUri(angry_link),
-
       happy_link, sad_link, neutral_link, angry_link
     };
 

@@ -2,12 +2,11 @@
 <html lang="de">
 <head>
     <meta charset="utf-8" />
-    <title>Manuelle Emotion</title>
+    <title>Vibecheck – Manuell</title>
 
     <script>
         const token = sessionStorage.getItem("spotify_access_token");
         const mode = sessionStorage.getItem("selected_mode");
-
         if (!token) window.location = "auth.html";
         if (mode !== "manual") window.location = "start.html";
     </script>
@@ -44,13 +43,9 @@
             border-radius: 0.75rem;
             padding: 0.75rem 1rem;
             cursor: pointer;
-            font-weight: 600;
+            font-weight: 700;
         }
-
-        .btn:disabled {
-            opacity: .6;
-            cursor: not-allowed;
-        }
+        .btn:disabled { opacity: .6; cursor: not-allowed; }
 
         .muted { color: #9ca3af; }
 
@@ -61,11 +56,7 @@
             border: 1px solid #0f172a;
         }
 
-        .big {
-            font-size: 1.1rem;
-            font-weight: 700;
-            margin: .25rem 0 .75rem 0;
-        }
+        .big { font-size: 1.1rem; font-weight: 800; margin: .25rem 0 .75rem 0; }
 
         .pill {
             display: inline-block;
@@ -77,38 +68,15 @@
             margin-left: .5rem;
         }
 
-        /* Mini-Player UI (IDs kompatibel zu app.js) */
-        .player {
-            display: grid;
-            grid-template-columns: 96px 1fr;
-            gap: 1rem;
-            align-items: center;
-        }
-
+        .player { display: grid; grid-template-columns: 96px 1fr; gap: 1rem; align-items: center; }
         #trackImage {
             width: 96px; height: 96px; object-fit: cover;
-            border-radius: 0.75rem;
-            border: 1px solid #0f172a;
-            background: #000;
+            border-radius: 0.75rem; border: 1px solid #0f172a; background: #000;
         }
 
-        .controls {
-            display: flex;
-            gap: .5rem;
-            flex-wrap: wrap;
-            align-items: center;
-            margin-top: .75rem;
-        }
-
-        .timeline {
-            display: grid;
-            grid-template-columns: 56px 1fr 56px;
-            gap: .75rem;
-            align-items: center;
-            margin-top: .75rem;
-        }
-
-        input[type="range"] { width: 100%; }
+        .controls { display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; margin-top:.75rem; }
+        .timeline { display:grid; grid-template-columns:56px 1fr 56px; gap:.75rem; align-items:center; margin-top:.75rem; }
+        input[type="range"] { width:100%; }
 
         pre {
             white-space: pre-wrap;
@@ -121,47 +89,41 @@
             overflow: auto;
         }
 
-        @media (max-width: 900px) {
-            .row { grid-template-columns: 1fr; }
-        }
+        @media (max-width: 900px) { .row { grid-template-columns: 1fr; } }
     </style>
 </head>
 
 <body>
 <a href="start.html" onclick="sessionStorage.removeItem('selected_mode')">← Zurück zur Modus-Auswahl</a>
 
-<h1 style="margin: .75rem 0 0 0;">Manuelle Emotion</h1>
+<h1 style="margin: .75rem 0 0 0;">Vibecheck – Manuelle Emotion</h1>
 <p class="muted" style="margin: .25rem 0 1rem 0;">
     Drücke den Button, zeige 5 Sekunden eine Emotion – danach wird die passende Playlist gestartet und bleibt aktiv bis zur nächsten Messung.
-    <span class="pill" id="currentModePill">Modus: Manual</span>
+    <span class="pill">Modus: Manual</span>
 </p>
 
 <div class="row">
-    <!-- Kamera + Messung -->
     <div class="card">
         <div class="big">Kamera</div>
         <video id="video" autoplay muted playsinline></video>
 
         <div style="margin-top: 1rem;">
             <button class="btn" id="measureBtn">🎭 Emotion messen (5s)</button>
-            <div class="muted" id="measureStatus" style="margin-top: .5rem;">
-                Status: bereit
-            </div>
+            <div class="muted" id="measureStatus" style="margin-top: .5rem;">Status: bereit</div>
         </div>
 
         <div class="muted" style="margin-top: .75rem;">
-            Tipp: Halte dein Gesicht gut im Bild und bleib während der 5 Sekunden möglichst konstant.
+            Tipp: Gesicht gut im Bild halten und 5 Sekunden konstant bleiben.
         </div>
     </div>
 
-    <!-- Player -->
     <div class="card">
         <div class="big">Player</div>
 
         <div class="player">
             <img id="trackImage" alt="cover" />
             <div>
-                <div id="trackTitle" style="font-weight: 800;">—</div>
+                <div id="trackTitle" style="font-weight: 900;">—</div>
                 <div id="trackArtist" class="muted">—</div>
 
                 <div class="controls">
@@ -186,24 +148,18 @@
     </div>
 </div>
 
-<!-- Spotify SDK -->
 <script src="https://sdk.scdn.co/spotify-player.js"></script>
 
-<!-- face-api + camera.js (wie bei dir im Projekt) -->
+<!-- wie in deinem Projekt -->
 <script defer src="face-api.min.js"></script>
 <script defer src="camera.js"></script>
-
-<!-- app.js (steuert Player + Playlistwechsel) -->
 <script defer src="app.js"></script>
 
-<!-- Manual-Logic: 5s messen und Playlist setzen -->
 <script>
     const measureBtn = document.getElementById("measureBtn");
     const statusEl = document.getElementById("measureStatus");
 
-    function sleep(ms) {
-        return new Promise((r) => setTimeout(r, ms));
-    }
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
     async function doManualMeasurement() {
         if (!sessionStorage.getItem("spotify_access_token")) {
@@ -216,9 +172,13 @@
             return;
         }
 
+        if (typeof window.applyEmotionNow !== "function") {
+            statusEl.textContent = "Status: Player nicht bereit (app.js?)";
+            return;
+        }
+
         measureBtn.disabled = true;
 
-        // Reset und 5 Sekunden sammeln
         window.resetEmotionStats();
 
         for (let i = 5; i >= 1; i--) {
@@ -226,18 +186,18 @@
             await sleep(1000);
         }
 
-        const dominant = window.getDominantEmotion(); // z.B. "happy" | "sad" | "neutral" | "angry"
-        statusEl.textContent = dominant
-            ? `Status: erkannt → ${dominant} ✅ (Playlist wird gesetzt)`
-            : `Status: keine Emotion erkannt ❌ (bitte erneut versuchen)`;
-
-        if (dominant && typeof window.applyEmotionNow === "function") {
-            // applyEmotionNow kommt aus app.js (wir machen es dort global verfügbar)
-            await window.applyEmotionNow(dominant);
+        const dominant = window.getDominantEmotion();
+        if (!dominant) {
+            statusEl.textContent = "Status: keine Emotion erkannt ❌ (bitte erneut versuchen)";
+            measureBtn.disabled = false;
+            return;
         }
 
-        measureBtn.disabled = false;
+        statusEl.textContent = `Status: erkannt → ${dominant} ✅ (Playlist wird gesetzt)`;
+        await window.applyEmotionNow(dominant);
+
         statusEl.textContent = "Status: bereit";
+        measureBtn.disabled = false;
     }
 
     measureBtn.addEventListener("click", doManualMeasurement);

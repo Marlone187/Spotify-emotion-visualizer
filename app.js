@@ -4,7 +4,7 @@ const REDIRECT_URI = "https://marlone187.github.io/Spotify-emotion-visualizer/ca
 // Modus: "auto" oder "manual"
 const SELECTED_MODE = sessionStorage.getItem("selected_mode") || "auto";
 
-// ✅ Default Playlists je Emotion (bleiben bestehen)
+// Default Playlists
 const DEFAULT_PLAYLISTS = {
     happy: "spotify:playlist:0s4GDB01raiqiNVstNfUXe",
     sad: "spotify:playlist:45rWp1I6aL5ruR3WNG5K2H",
@@ -12,18 +12,16 @@ const DEFAULT_PLAYLISTS = {
     angry: "spotify:playlist:55DSMbgOO36tDodpwCykG4",
 };
 
-// ✅ Custom Playlists aus localStorage (Prototyp)
+// Custom Playlists (Prototyp) aus localStorage
 function loadCustomPlaylists() {
     const raw = localStorage.getItem("custom_playlists");
     if (!raw) return null;
     try { return JSON.parse(raw); } catch { return null; }
 }
 
-// ✅ Effektive Playlists (Custom überschreibt Default)
 function getEffectivePlaylists() {
     const custom = loadCustomPlaylists();
     const effective = { ...DEFAULT_PLAYLISTS };
-
     if (custom) {
         if (custom.happy_uri) effective.happy = custom.happy_uri;
         if (custom.sad_uri) effective.sad = custom.sad_uri;
@@ -33,22 +31,17 @@ function getEffectivePlaylists() {
     return effective;
 }
 
-// 🎵 Playlists je Emotion (wird dynamisch gelesen)
 let PLAYLISTS = getEffectivePlaylists();
 
-// Startemotion:
-// - Auto: "happy"
-// - Manual: letzte manuell gewählte Emotion (falls vorhanden), sonst "happy"
+// Startemotion
 let currentEmotion =
     SELECTED_MODE === "manual"
         ? (sessionStorage.getItem("manual_emotion") || "happy")
         : "happy";
 
-// Wenn jemand Custom-Playlists speichert und dann direkt weitergeht,
-// stellen wir sicher, dass currentContextUri anhand der effektiven Playlists gesetzt wird.
 let currentContextUri = PLAYLISTS[currentEmotion];
 
-// Button-Emotion (hat Vorrang vor Kamera) – Auto-Modus
+// Auto: Button override
 let pendingEmotion = null;
 
 // Logging
@@ -58,7 +51,7 @@ const log = (...msg) => {
     console.log(...msg);
 };
 
-// globaler Token / Player
+// Token / Player
 let accessToken = sessionStorage.getItem("spotify_access_token") || null;
 let player = null;
 let deviceId = null;
@@ -66,7 +59,7 @@ let lastTrackId = null;
 let isPlaying = false;
 let playerReady = false;
 
-// Auto-Modus helpers
+// Auto helpers
 let preEndHandledTrackId = null;
 let isSwitchingPlaylist = false;
 
@@ -83,24 +76,21 @@ const durationEl = document.getElementById("durationTime");
 const volumeSlider = document.getElementById("volumeSlider");
 const volumeValueEl = document.getElementById("volumeValue");
 
-// Icons
 const PLAY_ICON = "▶️";
 const PAUSE_ICON = "⏸️";
 
-// Start-Button freischalten
+// Start-Button enable
 if (startBtn) {
     if (accessToken) {
         startBtn.disabled = false;
         startBtn.textContent = PLAY_ICON;
-        log("Access Token gefunden, Start-Button freigegeben.");
-        log("Modus:", SELECTED_MODE, "| Startemotion:", currentEmotion);
-        log("Playlists aktiv (effective):", JSON.stringify(PLAYLISTS));
+        log("Access Token gefunden. Modus:", SELECTED_MODE);
     } else {
-        log("Kein Access Token – solltest eigentlich auf auth.html gewesen sein.");
+        log("Kein Access Token – bitte auth.html nutzen.");
     }
 }
 
-// Timeline-State
+// Timeline
 let isSeeking = false;
 let currentDurationMs = 0;
 let progressInterval = null;
@@ -151,21 +141,56 @@ async function exchangeCodeForToken(code) {
         await exchangeCodeForToken(code);
 
         if (sessionStorage.getItem("spotify_access_token")) {
-            log("Weiterleitung zur Modus-Auswahl (start.html)...");
+            log("Weiterleitung zu start.html ...");
             window.location = "start.html";
         } else {
-            log("❌ Kein Access Token nach Exchange — bleibe auf callback.html.");
+            log("❌ Kein Token nach Exchange.");
         }
-    } else {
-        log("❌ Kein Code in callback gefunden.");
     }
 })();
 
 // ===============================
-// Emotion Buttons (optional)
+// ✅ FIX: Transfer Playback (gegen 403 Restriction violated)
+// ===============================
+async function transferPlaybackToWebSDKDevice() {
+    if (!deviceId || !accessToken) return false;
+
+    try {
+        log("🔁 Transfer Playback auf Web-Player Device...");
+
+        const res = await fetch("https://api.spotify.com/v1/me/player", {
+            method: "PUT",
+            headers: {
+                Authorization: "Bearer " + accessToken,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                device_ids: [deviceId],
+                play: false,
+            }),
+        });
+
+        if (res.status === 204) {
+            log("✅ Transfer Playback OK (204).");
+            await new Promise((r) => setTimeout(r, 300));
+            return true;
+        }
+
+        const text = await res.text();
+        log("⚠️ Transfer Playback Antwort:", res.status, text);
+        await new Promise((r) => setTimeout(r, 300));
+        return res.ok;
+    } catch (e) {
+        log("❌ Transfer Playback Error:", e);
+        return false;
+    }
+}
+
+// ===============================
+// Auto: optional Emotion Buttons (falls auf index.html vorhanden)
 // ===============================
 function scheduleEmotionChange(emotion) {
-    PLAYLISTS = getEffectivePlaylists(); // falls Startseite geändert wurde (neuer Tab)
+    PLAYLISTS = getEffectivePlaylists();
     if (!PLAYLISTS[emotion]) {
         log("Unbekannte Emotion:", emotion);
         return;
@@ -182,25 +207,7 @@ document.querySelectorAll("[data-emotion]").forEach((btn) => {
 });
 
 // ===============================
-// Stats Logger
-// ===============================
-function logEmotionStats(stats) {
-    if (!stats) {
-        log("📊 Keine Emotion-Daten (Kamera aus / kein Gesicht / kein Tracking).");
-        return;
-    }
-
-    log(
-        "📊 Emotionen während des Songs:\n" +
-        `   😊 Happy:   ${stats.happy}%\n` +
-        `   😢 Sad:     ${stats.sad}%\n` +
-        `   😐 Neutral: ${stats.neutral}%\n` +
-        `   😡 Angry:   ${stats.angry}%`
-    );
-}
-
-// ===============================
-// Progress-Loop
+// Progress Loop
 // ===============================
 function startProgressLoop() {
     if (!player) return;
@@ -223,17 +230,17 @@ function startProgressLoop() {
             if (!currentId || !duration) return;
 
             if (currentId !== lastTrackId) {
-                if (lastTrackId) log("🎵 Songwechsel erkannt (Info):", lastTrackId, "→", currentId);
+                if (lastTrackId) log("🎵 Songwechsel:", lastTrackId, "→", currentId);
                 lastTrackId = currentId;
                 preEndHandledTrackId = null;
             }
 
-            // ✅ Auto only: Song-End Evaluierung
+            // ✅ Auto only
             if (SELECTED_MODE === "auto") {
                 const remaining = duration - position;
                 if (remaining <= 1500 && remaining >= 0 && preEndHandledTrackId !== currentId) {
                     preEndHandledTrackId = currentId;
-                    log(`⏱ Song endet bald (Rest: ${Math.round(remaining)} ms) → Emotion auswerten.`);
+                    log(`⏱ Song endet bald (Rest: ${Math.round(remaining)}ms) → Emotion auswerten.`);
                     await evaluateAndMaybeSwitchEmotion("song_end");
                 }
             }
@@ -244,84 +251,59 @@ function startProgressLoop() {
 }
 
 // ===============================
-// Auto: Emotion evaluieren & ggf wechseln
+// Auto: Emotion evaluieren & ggf. wechseln
 // ===============================
 async function evaluateAndMaybeSwitchEmotion(reason) {
     if (SELECTED_MODE !== "auto") return false;
+    if (isSwitchingPlaylist) return false;
 
-    if (isSwitchingPlaylist) {
-        log("⚠️ Playlistwechsel läuft bereits – neue Evaluierung übersprungen.");
-        return false;
-    }
-
-    PLAYLISTS = getEffectivePlaylists(); // immer aktuell halten
-
-    log("------------------------------------");
-    log("🎯 Emotionsevaluierung, Grund:", reason);
-
-    let stats = null;
-    if (typeof window.getEmotionStats === "function") stats = window.getEmotionStats();
-    logEmotionStats(stats);
+    PLAYLISTS = getEffectivePlaylists();
 
     let chosenEmotion = null;
 
     if (pendingEmotion && PLAYLISTS[pendingEmotion]) {
-        log("Nutze Button-Emotion (Vorrang):", pendingEmotion);
         chosenEmotion = pendingEmotion;
+        log("Button-Emotion:", chosenEmotion);
     } else if (typeof window.getDominantEmotion === "function") {
         const cameraEmotion = window.getDominantEmotion();
         if (cameraEmotion && PLAYLISTS[cameraEmotion]) {
-            log("Dominante Emotion (Kamera, gesamter Song):", cameraEmotion);
             chosenEmotion = cameraEmotion;
-        } else {
-            log("Keine gültige Kamera-Emotion für diesen Song gefunden.");
+            log("Kamera-Emotion:", chosenEmotion);
         }
     }
 
     pendingEmotion = null;
-
     if (typeof window.resetEmotionStats === "function") window.resetEmotionStats();
 
-    if (!chosenEmotion) {
-        log("→ Keine Emotion gewählt – Playlist bleibt bei:", currentEmotion);
-        return false;
-    }
+    if (!chosenEmotion || chosenEmotion === currentEmotion) return false;
 
-    if (chosenEmotion === currentEmotion) {
-        log("→ Emotion entspricht aktueller Playlist:", currentEmotion, "→ kein Wechsel.");
-        return false;
-    }
+    log("Playlistwechsel:", currentEmotion, "→", chosenEmotion, "| Grund:", reason);
 
-    log("→ Playlistwechsel:", currentEmotion, "→", chosenEmotion, "(Grund:", reason + ")");
     isSwitchingPlaylist = true;
+    if (progressInterval) { clearInterval(progressInterval); progressInterval = null; }
 
-    if (progressInterval) {
-        clearInterval(progressInterval);
-        progressInterval = null;
-    }
-
-    if (player) {
-        try { await player.pause(); } catch {}
-    }
+    try { await player.pause(); } catch {}
 
     await applyEmotionNow(chosenEmotion);
 
     setTimeout(() => {
         isSwitchingPlaylist = false;
         startProgressLoop();
-        log("Progress-Loop nach Playlistwechsel neu gestartet.");
     }, 400);
 
     return true;
 }
 
 // ===============================
-// Player Init
+// Spotify SDK Ready
 // ===============================
 window.onSpotifyWebPlaybackSDKReady = () => {
     log("Spotify Web Playback SDK geladen");
 };
 
+// ===============================
+// Player Init
+// ===============================
 async function initPlayerIfNeeded() {
     if (player || playerReady) return;
     if (!accessToken) return;
@@ -338,11 +320,11 @@ async function initPlayerIfNeeded() {
         deviceId = device_id;
         playerReady = true;
 
-        PLAYLISTS = getEffectivePlaylists(); // nochmal aktuell
+        PLAYLISTS = getEffectivePlaylists();
         currentContextUri = PLAYLISTS[currentEmotion];
 
-        log("Player ready:", device_id);
-        log("Starte mit Emotion:", currentEmotion, "->", currentContextUri);
+        log("Player ready:", deviceId);
+        log("Startemotion:", currentEmotion, "→", currentContextUri);
 
         if (prevBtn) prevBtn.disabled = false;
         if (nextBtn) nextBtn.disabled = false;
@@ -351,17 +333,24 @@ async function initPlayerIfNeeded() {
         try {
             const vol = await player.getVolume();
             const volPercent = Math.round(vol * 100);
-            if (volumeSlider) volumeSlider.value = volPercent.toString();
+            if (volumeSlider) volumeSlider.value = String(volPercent);
             if (volumeValueEl) volumeValueEl.textContent = volPercent + "%";
         } catch {}
 
-        // Shuffle
+        // ✅ FIX: Transfer Playback
+        await transferPlaybackToWebSDKDevice();
+
+        // Shuffle (optional)
         try {
-            await fetch(
+            const shuffleRes = await fetch(
                 `https://api.spotify.com/v1/me/player/shuffle?state=true&device_id=${deviceId}`,
                 { method: "PUT", headers: { Authorization: "Bearer " + accessToken } }
             );
-        } catch {}
+            if (shuffleRes.status === 204) log("Shuffle aktiviert ✅");
+            else log("Shuffle Fehler:", shuffleRes.status, await shuffleRes.text());
+        } catch (e) {
+            log("Shuffle Request Error:", e);
+        }
 
         if (SELECTED_MODE === "auto") {
             if (typeof window.resetEmotionStats === "function") window.resetEmotionStats();
@@ -382,7 +371,9 @@ async function initPlayerIfNeeded() {
     await player.connect();
 }
 
-// StartBtn toggle
+// ===============================
+// Start Button Toggle
+// ===============================
 startBtn?.addEventListener("click", async () => {
     if (!accessToken) return;
 
@@ -396,17 +387,21 @@ startBtn?.addEventListener("click", async () => {
             await player.pause();
             isPlaying = false;
             if (startBtn) startBtn.textContent = PLAY_ICON;
+            log("Playback pausiert.");
         } else {
             await player.resume();
             isPlaying = true;
             if (startBtn) startBtn.textContent = PAUSE_ICON;
+            log("Playback fortgesetzt.");
         }
     } catch (err) {
         log("Pause/Resume Fehler:", err);
     }
 });
 
-// Timeline + UI helpers
+// ===============================
+// Now Playing UI / Timeline
+// ===============================
 function msToTime(ms) {
     if (!Number.isFinite(ms) || ms < 0) ms = 0;
     const totalSeconds = Math.floor(ms / 1000);
@@ -416,12 +411,11 @@ function msToTime(ms) {
 }
 
 function updateNowPlayingUI(state) {
-    if (!state || !state.track_window) return;
     const track = state.track_window.current_track;
     if (!track) return;
 
     if (trackImage) {
-        const img = track.album && track.album.images && track.album.images[0];
+        const img = track.album?.images?.[0];
         trackImage.src = img ? img.url : "";
     }
 
@@ -436,13 +430,12 @@ function updateNowPlayingUI(state) {
     currentDurationMs = duration;
 
     if (durationEl) durationEl.textContent = msToTime(duration);
-
     if (!isSeeking && currentTimeEl) currentTimeEl.textContent = msToTime(position);
 
     if (progressBar) {
         progressBar.disabled = duration <= 0;
-        progressBar.max = duration.toString();
-        if (!isSeeking) progressBar.value = position.toString();
+        progressBar.max = String(duration);
+        if (!isSeeking) progressBar.value = String(position);
     }
 }
 
@@ -456,14 +449,16 @@ progressBar?.addEventListener("input", (e) => {
 progressBar?.addEventListener("change", async (e) => {
     if (!player) { isSeeking = false; return; }
     const newPos = Number(e.target.value);
-    try { await player.seek(newPos); } catch {}
+    try { await player.seek(newPos); } catch (err) { log("Seek Fehler:", err); }
     isSeeking = false;
 });
 
-// Prev/Next
+// ===============================
+// Prev / Next
+// ===============================
 prevBtn?.addEventListener("click", async () => {
     if (!player) return;
-    try { await player.previousTrack(); } catch {}
+    try { await player.previousTrack(); } catch (err) { log("Prev Fehler:", err); }
 });
 
 nextBtn?.addEventListener("click", async () => {
@@ -476,25 +471,28 @@ nextBtn?.addEventListener("click", async () => {
         } else {
             await player.nextTrack();
         }
-    } catch {}
+    } catch (err) {
+        log("Next Fehler:", err);
+    }
 });
 
+// ===============================
 // Volume
+// ===============================
 volumeSlider?.addEventListener("input", async (e) => {
     const val = Number(e.target.value);
     if (volumeValueEl) volumeValueEl.textContent = `${val}%`;
     if (!player) return;
-
-    try { await player.setVolume(val / 100); } catch {}
+    try { await player.setVolume(val / 100); } catch (err) { log("setVolume Fehler:", err); }
 });
 
 // ===============================
-// Playlist setzen (Manual & Auto)
+// ✅ Playlist setzen (Manual & Auto) + 403 Retry
 // ===============================
 async function applyEmotionNow(emotion) {
-    PLAYLISTS = getEffectivePlaylists(); // ✅ immer aktuell
+    PLAYLISTS = getEffectivePlaylists();
     if (!PLAYLISTS[emotion]) {
-        log("Unbekannte Emotion beim Anwenden:", emotion);
+        log("Unbekannte Emotion:", emotion);
         return;
     }
 
@@ -505,10 +503,8 @@ async function applyEmotionNow(emotion) {
         sessionStorage.setItem("manual_emotion", currentEmotion);
     }
 
-    log("Wechsle jetzt Playlist auf Emotion:", currentEmotion, "->", currentContextUri);
-
     if (!deviceId || !accessToken) {
-        log("Kein Device oder Token – kann Playlist nicht wechseln.");
+        log("Kein Device/Token – kann nicht play setzen.");
         return;
     }
 
@@ -529,18 +525,44 @@ async function applyEmotionNow(emotion) {
     );
 
     if (res.status === 204) {
-        log("Playlist gesetzt ✅");
-    } else {
-        log("Fehler beim Setzen:", res.status, await res.text());
+        log("✅ Playlist gesetzt:", currentEmotion);
+        return;
+    }
+
+    const txt = await res.text();
+    log("Fehler beim Wechseln:", res.status, txt);
+
+    if (res.status === 403) {
+        log("⚠️ 403 Restriction violated → Transfer + Retry...");
+        await transferPlaybackToWebSDKDevice();
+
+        const retry = await fetch(
+            `https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`,
+            {
+                method: "PUT",
+                headers: {
+                    Authorization: "Bearer " + accessToken,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(body),
+            }
+        );
+
+        if (retry.status === 204) log("✅ Retry erfolgreich!");
+        else log("❌ Retry fehlgeschlagen:", retry.status, await retry.text());
     }
 }
 
-// ✅ für manual.html
 window.applyEmotionNow = applyEmotionNow;
 
-// Start playback
+// ===============================
+// Start playback + 403 handling
+// ===============================
 async function startPlayback() {
-    if (!deviceId) return;
+    if (!deviceId) {
+        log("Kein deviceId.");
+        return;
+    }
 
     PLAYLISTS = getEffectivePlaylists();
     currentContextUri = PLAYLISTS[currentEmotion];
@@ -563,7 +585,36 @@ async function startPlayback() {
 
     if (res.status === 204) {
         log("Playback gestartet! Emotion:", currentEmotion);
-    } else {
-        log("Fehler:", res.status, await res.text());
+        return;
+    }
+
+    const txt = await res.text();
+    log("Fehler:", res.status, txt);
+
+    if (res.status === 403) {
+        log(
+            "⚠️ 403 Restriction violated: Bitte Spotify App (Handy/Desktop) kurz öffnen, " +
+            "ein Lied starten/pausieren und dann hier erneut versuchen."
+        );
+
+        await transferPlaybackToWebSDKDevice();
+
+        const retry = await fetch(
+            `https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`,
+            {
+                method: "PUT",
+                headers: {
+                    Authorization: "Bearer " + accessToken,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(body),
+            }
+        );
+
+        if (retry.status === 204) {
+            log("✅ Retry nach Transfer erfolgreich!");
+        } else {
+            log("❌ Retry fehlgeschlagen:", retry.status, await retry.text());
+        }
     }
 }
