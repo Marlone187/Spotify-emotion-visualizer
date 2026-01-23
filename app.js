@@ -499,6 +499,11 @@ async function applyEmotionNow(emotion) {
     currentEmotion = emotion;
     currentContextUri = PLAYLISTS[currentEmotion];
 
+    // NEU: Theme-Farbe anpassen
+    if (typeof window.setEmotionTheme === 'function') {
+        window.setEmotionTheme(currentEmotion);
+    }
+
     if (SELECTED_MODE === "manual") {
         sessionStorage.setItem("manual_emotion", currentEmotion);
     }
@@ -566,6 +571,11 @@ async function startPlayback() {
 
     PLAYLISTS = getEffectivePlaylists();
     currentContextUri = PLAYLISTS[currentEmotion];
+
+    // NEU: Theme-Farbe anpassen (beim ersten Start)
+    if (typeof window.setEmotionTheme === 'function') {
+        window.setEmotionTheme(currentEmotion);
+    }
 
     const body = currentContextUri.startsWith("spotify:playlist")
         ? { context_uri: currentContextUri }
