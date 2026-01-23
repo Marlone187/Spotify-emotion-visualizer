@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Spotify Emotion Player | Premium Experience</title>
+  <title>Spotify Emotion Player | Next-Gen UI</title>
 
   <script>
     const token = sessionStorage.getItem("spotify_access_token");
@@ -17,13 +17,13 @@
   <style>
     /* Emotion Variables System */
     :root {
-      --bg-color: #0b0e14;
-      --accent-color: #3b82f6;
+      --bg-color: #1a1a05; /* Happy Start */
+      --accent-color: #fbbf24;
       --text-main: #ffffff;
       --text-dim: rgba(255, 255, 255, 0.6);
       --glass-bg: rgba(255, 255, 255, 0.05);
       --glass-border: rgba(255, 255, 255, 0.1);
-      --glow-opacity: 0.2;
+      --glow-opacity: 0.5;
       --canvas-skew: 0deg;
       --transition-speed: 1.5s;
     }
@@ -37,14 +37,13 @@
     body.mood-sad {
       --bg-color: #020617;
       --accent-color: #60a5fa;
-      --glass-bg: rgba(0, 0, 0, 0.3);
-      --glow-opacity: 0.1;
+      --glow-opacity: 0.2;
     }
 
     body.mood-angry {
       --bg-color: #1a0505;
       --accent-color: #ef4444;
-      --canvas-skew: -1deg;
+      --canvas-skew: -1.5deg;
       --glow-opacity: 0.4;
     }
 
@@ -54,238 +53,153 @@
       --glow-opacity: 0.2;
     }
 
-    /* Base Setup */
-    * { box-sizing: border-box; transition: all var(--transition-speed) ease-in-out; }
+    * { box-sizing: border-box; transition: all var(--transition-speed) cubic-bezier(0.4, 0, 0.2, 1); }
 
     body {
-      margin: 0;
-      padding: 0;
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      margin: 0; padding: 0;
+      font-family: 'Inter', system-ui, sans-serif;
       background-color: var(--bg-color);
       color: var(--text-main);
-      height: 100vh;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
+      height: 100vh; overflow: hidden;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
     }
 
-    /* Ambient Background Glow */
+    /* Ambient Glow */
     body::before {
-      content: '';
-      position: fixed;
-      top: 50%; left: 50%;
-      width: 60vw; height: 60vw;
+      content: ''; position: fixed; top: 50%; left: 50%;
+      width: 70vw; height: 70vw;
       background: radial-gradient(circle, var(--accent-color) 0%, transparent 70%);
       transform: translate(-50%, -50%);
-      filter: blur(100px);
-      opacity: var(--glow-opacity);
-      z-index: -1;
+      filter: blur(80px); opacity: var(--glow-opacity); z-index: -1;
     }
 
-    /* Top Navigation */
-    .top-nav {
-      position: absolute;
-      top: 2rem;
-      left: 2rem;
-      z-index: 100;
-    }
-
+    /* Top Nav & Back Button */
+    .top-nav { position: absolute; top: 2rem; left: 2rem; z-index: 100; }
     .btn-back {
-      background: var(--glass-bg);
-      border: 1px solid var(--glass-border);
-      color: white;
-      padding: 0.75rem 1.5rem;
-      border-radius: 2rem;
-      text-decoration: none;
-      backdrop-filter: blur(10px);
-      font-size: 0.9rem;
-      cursor: pointer;
+      background: var(--glass-bg); border: 1px solid var(--glass-border);
+      color: white; padding: 0.7rem 1.2rem; border-radius: 2rem;
+      cursor: pointer; backdrop-filter: blur(10px);
     }
 
-    /* Camera Section (Top Right) */
+    /* Camera & Stats (Top Right) */
     #camera-section {
-      position: absolute;
-      top: 2rem;
-      right: 2rem;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 1rem;
+      position: absolute; top: 2rem; right: 2rem;
+      display: flex; flex-direction: column; align-items: flex-end; gap: 1rem;
     }
-
     #video-feed {
-      width: 160px;
-      height: 120px;
-      object-fit: cover;
-      border-radius: 1rem;
-      border: 1px solid var(--glass-border);
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      width: 180px; height: 135px; object-fit: cover;
+      border-radius: 1rem; border: 1px solid var(--glass-border);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
     }
 
     /* Emotion Bars */
-    .emotion-bars-container {
-      width: 160px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-    .emotion-bar-wrapper {
-      height: 6px;
-      background: rgba(255,255,255,0.1);
-      border-radius: 3px;
-      overflow: hidden;
-    }
-    .emotion-bar-fill {
-      height: 100%;
-      width: 0%; /* Dynamic update via JS */
-      transition: width 0.5s ease;
-    }
-    #bar-happy { background: #fbbf24; }
+    .emotion-bars-container { width: 180px; display: flex; flex-direction: column; gap: 6px; }
+    .bar-label { font-size: 0.65rem; text-transform: uppercase; color: var(--text-dim); margin-bottom: 2px; }
+    .emotion-bar-wrapper { height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; }
+    .emotion-bar-fill { height: 100%; width: 0%; border-radius: 2px; transition: width 0.8s ease; }
+    #bar-happy { background: #fbbf24; box-shadow: 0 0 10px #fbbf24; }
     #bar-sad { background: #60a5fa; }
-    #bar-angry { background: #ef4444; }
+    #bar-angry { background: #ef4444; box-shadow: 0 0 10px #ef4444; }
     #bar-neutral { background: #94a3b8; }
 
     /* Main Player Central */
     .main-player {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-      transform: skew(var(--canvas-skew));
-      max-width: 90vw;
+      display: flex; flex-direction: column; align-items: center;
+      text-align: center; transform: skew(var(--canvas-skew));
     }
-
     #trackImage {
-      width: 380px;
-      height: 380px;
-      border-radius: 1.5rem;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
-      margin-bottom: 2.5rem;
-      border: 1px solid var(--glass-border);
-      object-fit: cover;
+      width: 320px; height: 320px; border-radius: 1.5rem;
+      box-shadow: 0 30px 60px rgba(0,0,0,0.6);
+      margin-bottom: 2rem; border: 1px solid var(--glass-border);
     }
+    #trackTitle { font-size: 2.2rem; font-weight: 800; margin: 0; }
+    #trackArtist { font-size: 1.1rem; color: var(--text-dim); margin: 0.5rem 0 1.5rem 0; }
 
-    #trackTitle {
-      font-size: 2.5rem;
-      font-weight: 800;
-      margin-bottom: 0.5rem;
-      letter-spacing: -0.02em;
-    }
-
-    #trackArtist {
-      font-size: 1.2rem;
-      color: var(--text-dim);
-      margin-bottom: 2rem;
-    }
-
-    /* Controls */
-    .player-controls {
-      display: flex;
-      gap: 2rem;
-      align-items: center;
-    }
-
+    /* Player Controls */
+    .player-controls { display: flex; gap: 1.5rem; align-items: center; }
     .ctrl-btn {
-      background: none;
-      border: none;
-      color: white;
-      font-size: 2rem;
-      cursor: pointer;
-      opacity: 0.8;
+      background: none; border: none; color: white; font-size: 1.8rem;
+      cursor: pointer; opacity: 0.7;
     }
     .ctrl-btn:hover { opacity: 1; transform: scale(1.1); }
-    .ctrl-btn:disabled { opacity: 0.2; cursor: not-allowed; }
-
     #startBtn {
-      width: 70px;
-      height: 70px;
-      background: white;
-      color: black;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      width: 64px; height: 64px; background: white; color: black;
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem;
     }
 
-    /* Volume Fixed Bottom Right */
+    /* Volume Bottom Right */
     .volume-float {
-      position: fixed;
-      bottom: 2.5rem;
-      right: 2.5rem;
-      background: var(--glass-bg);
-      backdrop-filter: blur(15px);
-      padding: 1rem 1.5rem;
-      border-radius: 3rem;
+      position: fixed; bottom: 2rem; right: 2rem;
+      background: var(--glass-bg); backdrop-filter: blur(20px);
+      padding: 0.8rem 1.2rem; border-radius: 3rem;
       border: 1px solid var(--glass-border);
-      display: flex;
-      align-items: center;
-      gap: 1rem;
+      display: flex; align-items: center; gap: 1rem;
     }
 
-    input[type="range"] {
-      accent-color: var(--accent-color);
-      cursor: pointer;
+    /* Test Buttons (Bottom Left) */
+    .test-controls {
+      position: fixed; bottom: 2rem; left: 2rem;
+      display: flex; gap: 0.5rem;
     }
-
-    /* Hidden Utility */
-    #log, .emotion-manuell, #emotion-text { display: none; }
-
-    @media (max-width: 600px) {
-      #trackImage { width: 280px; height: 280px; }
-      #trackTitle { font-size: 1.5rem; }
+    .emotion-btn {
+      background: var(--glass-bg); border: 1px solid var(--glass-border);
+      color: white; padding: 0.5rem 0.8rem; border-radius: 0.5rem;
+      cursor: pointer; font-size: 0.8rem; backdrop-filter: blur(5px);
     }
+    .emotion-btn:hover { background: var(--accent-color); color: black; }
+
+    #log { display: none; }
   </style>
 </head>
 
-<body class="mood-neutral">
-
-<nav class="top-nav">
+<body class="mood-happy"> <nav class="top-nav">
   <button onclick="window.location='start.html'" class="btn-back">← Zurück</button>
 </nav>
 
 <section id="camera-section">
   <video id="video-feed" autoplay muted playsinline></video>
   <div class="emotion-bars-container">
-    <div class="emotion-bar-wrapper"><div id="bar-happy" class="emotion-bar-fill"></div></div>
-    <div class="emotion-bar-wrapper"><div id="bar-sad" class="emotion-bar-fill"></div></div>
-    <div class="emotion-bar-wrapper"><div id="bar-angry" class="emotion-bar-fill"></div></div>
-    <div class="emotion-bar-wrapper"><div id="bar-neutral" class="emotion-bar-fill"></div></div>
+    <div><div class="bar-label">Happy</div><div class="emotion-bar-wrapper"><div id="bar-happy" class="emotion-bar-fill" style="width: 100%;"></div></div></div>
+    <div><div class="bar-label">Sad</div><div class="emotion-bar-wrapper"><div id="bar-sad" class="emotion-bar-fill"></div></div></div>
+    <div><div class="bar-label">Angry</div><div class="emotion-bar-wrapper"><div id="bar-angry" class="emotion-bar-fill"></div></div></div>
+    <div><div class="bar-label">Neutral</div><div class="emotion-bar-wrapper"><div id="bar-neutral" class="emotion-bar-fill"></div></div></div>
   </div>
-  <span id="emotion-text"></span> </section>
+  <span id="emotion-text" style="display:none;">happy</span>
+</section>
 
 <main class="main-player">
   <img id="trackImage" src="https://via.placeholder.com/400" alt="Album Cover" />
-
-  <div id="trackTitle">–</div>
-  <div id="trackArtist">–</div>
+  <h1 id="trackTitle">Warte auf Spotify...</h1>
+  <p id="trackArtist">Bereit zum Abspielen</p>
 
   <div class="player-controls">
     <button id="prevBtn" class="ctrl-btn" disabled>⏮</button>
     <button id="startBtn" class="ctrl-btn" disabled>▶</button>
     <button id="nextBtn" class="ctrl-btn" disabled>⏭</button>
   </div>
+
+  <div style="width: 100%; max-width: 400px; margin-top: 2rem; display: flex; align-items: center; gap: 10px;">
+    <span id="currentTime" style="font-size: 0.75rem; color: var(--text-dim);">0:00</span>
+    <input type="range" id="progressBar" style="flex: 1; height: 3px; accent-color: var(--accent-color);" min="0" max="0" value="0" disabled />
+    <span id="durationTime" style="font-size: 0.75rem; color: var(--text-dim);">0:00</span>
+  </div>
 </main>
 
-<div style="width: 100%; max-width: 500px; margin-top: 2rem; display: flex; align-items: center; gap: 10px;">
-  <span id="currentTime" style="font-size: 0.8rem; color: var(--text-dim);">0:00</span>
-  <input type="range" id="progressBar" style="flex: 1;" min="0" max="0" value="0" disabled />
-  <span id="durationTime" style="font-size: 0.8rem; color: var(--text-dim);">0:00</span>
+<div class="test-controls">
+  <span style="font-size: 0.7rem; color: var(--text-dim); display: block; margin-bottom: 5px;">TEST-MODUS:</span><br>
+  <button class="emotion-btn" data-emotion="happy" onclick="setMood('happy')">Happy</button>
+  <button class="emotion-btn" data-emotion="sad" onclick="setMood('sad')">Sad</button>
+  <button class="emotion-btn" data-emotion="angry" onclick="setMood('angry')">Angry</button>
+  <button class="emotion-btn" data-emotion="neutral" onclick="setMood('neutral')">Neutral</button>
 </div>
 
 <div class="volume-float">
-  <span>󰕾</span>
+  <span>🔊</span>
   <input type="range" id="volumeSlider" min="0" max="100" value="50" disabled />
   <span id="volumeValue">50%</span>
 </div>
 
-<div class="emotion-manuell">
-  <button class="emotion-btn" data-emotion="happy">Happy</button>
-  <button class="emotion-btn" data-emotion="sad">Sad</button>
-  <button class="emotion-btn" data-emotion="neutral">Neutral</button>
-  <button class="emotion-btn" data-emotion="angry">Angry</button>
-</div>
 <pre id="log"></pre>
 
 <script src="face-api.min.js"></script>
@@ -293,26 +207,36 @@
 <script type="module" src="app.js"></script>
 
 <script>
-  /**
-   * Helper Script to link the legacy app.js logic to the new UI bars
-   * This observes changes in the emotion-text (or global state)
-   */
-  const updateUIBars = (emotions) => {
+  // Test-Funktion für die Buttons
+  function setMood(mood) {
+    document.body.className = 'mood-' + mood;
+    document.getElementById('emotion-text').innerText = mood;
+
+    // Simuliere Balken-Anpassung für Testzwecke
+    const emotions = { happy: 0, sad: 0, angry: 0, neutral: 0 };
+    emotions[mood] = 1;
+    updateUIBars(emotions);
+  }
+
+  function updateUIBars(emotions) {
     if (!emotions) return;
     document.getElementById('bar-happy').style.width = (emotions.happy * 100) + '%';
     document.getElementById('bar-sad').style.width = (emotions.sad * 100) + '%';
     document.getElementById('bar-angry').style.width = (emotions.angry * 100) + '%';
     document.getElementById('bar-neutral').style.width = (emotions.neutral * 100) + '%';
-  };
+  }
 
-  // Example of MutationObserver to catch when app.js updates the emotion-text
+  // Observer für app.js Änderungen am emotion-text
   const targetNode = document.getElementById('emotion-text');
-  const observer = new MutationObserver((mutations) => {
-    const mood = targetNode.innerText.toLowerCase();
-    if (mood.includes('happy')) document.body.className = 'mood-happy';
-    else if (mood.includes('sad')) document.body.className = 'mood-sad';
-    else if (mood.includes('angry')) document.body.className = 'mood-angry';
-    else if (mood.includes('neutral')) document.body.className = 'mood-neutral';
+  const observer = new MutationObserver(() => {
+    const mood = targetNode.innerText.toLowerCase().trim();
+    if (mood) {
+      document.body.className = '';
+      if (mood.includes('happy')) document.body.classList.add('mood-happy');
+      else if (mood.includes('sad')) document.body.classList.add('mood-sad');
+      else if (mood.includes('angry')) document.body.classList.add('mood-angry');
+      else document.body.classList.add('mood-neutral');
+    }
   });
   observer.observe(targetNode, { childList: true, characterData: true, subtree: true });
 </script>
