@@ -1,254 +1,195 @@
 <!doctype html>
 <html lang="de">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Spotify Emotion Player | Next-Gen UI</title>
-
   <script>
     const token = sessionStorage.getItem("spotify_access_token");
     const mode = sessionStorage.getItem("selected_mode");
-    if (!token) window.location = "auth.html";
-    if (token && mode !== "auto") window.location = "start.html";
+
+    // Wenn nicht eingeloggt → Login-Seite
+    if (!token) {
+      window.location = "auth.html";
+    }
+
+    // Wenn eingeloggt, aber Modus nicht "auto" → Auswahlseite
+    if (token && mode !== "auto") {
+      window.location = "start.html";
+    }
+  </script>
+
+  <meta charset="utf-8" />
+  <title>Spotify Emotion Player</title>
+
+  <script>
+    // Wenn kein Access Token vorhanden → erst zur Auth-Seite
+    if (!sessionStorage.getItem("spotify_access_token")) {
+      window.location = "auth.html";
+    }
   </script>
 
   <script src="https://sdk.scdn.co/spotify-player.js"></script>
 
   <style>
-    /* Emotion Variables System */
-    :root {
-      --bg-color: #1a1a05;
-      --accent-color: #fbbf24;
-      --text-main: #ffffff;
-      --text-dim: rgba(255, 255, 255, 0.6);
-      --glass-bg: rgba(255, 255, 255, 0.05);
-      --glass-border: rgba(255, 255, 255, 0.1);
-      --glow-opacity: 0.5;
-      --canvas-skew: 0deg;
-      --transition-speed: 2s; /* Etwas langsamer für epischere Übergänge */
-    }
-
-    body.mood-happy {
-      --bg-color: #1a1a05;
-      --accent-color: #fbbf24;
-      --glow-opacity: 0.5;
-    }
-
-    body.mood-sad {
-      --bg-color: #020617;
-      --accent-color: #60a5fa;
-      --glow-opacity: 0.3;
-    }
-
-    body.mood-angry {
-      --bg-color: #1a0505;
-      --accent-color: #ef4444;
-      --canvas-skew: -1.5deg;
-      --glow-opacity: 0.4;
-    }
-
-    body.mood-neutral {
-      --bg-color: #0f172a;
-      --accent-color: #94a3b8;
-      --glow-opacity: 0.2;
-    }
-
-    * { box-sizing: border-box; transition: all var(--transition-speed) cubic-bezier(0.4, 0, 0.2, 1); }
-
     body {
-      margin: 0; padding: 0;
-      font-family: 'Inter', system-ui, sans-serif;
-      background-color: var(--bg-color);
-      color: var(--text-main);
-      height: 100vh; overflow: hidden;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #050816;
+      color: #e5e7eb;
+      padding: 1.5rem;
+    }
+    h1 {
+      margin-bottom: .5rem;
+    }
+    button {
+      padding: .5rem 1rem;
+      margin: .25rem;
+      border-radius: .5rem;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    #startBtn { background: #3b82f6; color:#e5e7eb; }
+    #prevBtn  { background: #0f172a; color:#e5e7eb; }
+    #nextBtn  { background: #0f172a; color:#e5e7eb; }
+    .emotion-btn { background:#334155; color:#e5e7eb; }
+    .emotion-btn:hover { background:#475569; }
+
+    /* Spotify Now Playing */
+    .now-playing {
+      margin-top: 1.5rem;
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      background: #020617;
+      padding: .75rem;
+      border-radius: .75rem;
+    }
+    .now-playing img {
+      width: 72px;
+      height: 72px;
+      border-radius: .5rem;
+      object-fit: cover;
+      background: #0f172a;
     }
 
-    /* Ambient Glow */
-    body::before {
-      content: ''; position: fixed; top: 50%; left: 50%;
-      width: 80vw; height: 80vw;
-      background: radial-gradient(circle, var(--accent-color) 0%, transparent 70%);
-      transform: translate(-50%, -50%);
-      filter: blur(100px); opacity: var(--glow-opacity); z-index: -1;
+    .progress-row {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      font-size: .75rem;
+      color: #9ca3af;
     }
 
-    /* Top Nav */
-    .top-nav { position: absolute; top: 2rem; left: 2rem; z-index: 100; }
-    .btn-back {
-      background: var(--glass-bg); border: 1px solid var(--glass-border);
-      color: white; padding: 0.7rem 1.2rem; border-radius: 2rem;
-      cursor: pointer; backdrop-filter: blur(10px);
+    #progressBar {
+      flex: 1;
+      height: 4px;
+      border-radius: 999px;
+      background: #1f2937;
+    }
+    #progressBar::-webkit-slider-thumb {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      background: #22c55e;
     }
 
-    /* Camera & Stats (Top Right) */
+    /* Lautstärke */
+    .volume-float {
+      position: fixed;
+      right: 1rem;
+      bottom: 1rem;
+      background: rgba(15, 23, 42, 0.95);
+      border-radius: 999px;
+      padding: .35rem .6rem;
+      display: flex;
+      align-items: center;
+      gap: .35rem;
+      box-shadow: 0 10px 30px rgba(0,0,0,.4);
+      font-size: .75rem;
+    }
+
+    /* Kamera-UI */
     #camera-section {
-      position: absolute; top: 2rem; right: 2rem;
-      display: flex; flex-direction: column; align-items: flex-end; gap: 1rem;
+      margin-top: 2rem;
+      display: flex;
+      gap: 1rem;
+      align-items: flex-start;
     }
     #video-feed {
-      width: 180px; height: 135px; object-fit: cover;
-      border-radius: 1rem; border: 1px solid var(--glass-border);
-      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+      border-radius: .5rem;
+      background: #020617;
+      border: 1px solid #1f2937;
     }
 
-    /* Emotion Bars - Diese aktualisieren sich immer ECHTZEIT */
-    .emotion-bars-container { width: 180px; display: flex; flex-direction: column; gap: 6px; }
-    .bar-label { font-size: 0.6rem; text-transform: uppercase; color: var(--text-dim); margin-bottom: 2px; }
-    .emotion-bar-wrapper { height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; }
-    .emotion-bar-fill { height: 100%; width: 0%; border-radius: 2px; transition: width 0.3s ease; }
-    #bar-happy { background: #fbbf24; }
-    #bar-sad { background: #60a5fa; }
-    #bar-angry { background: #ef4444; }
-    #bar-neutral { background: #94a3b8; }
-
-    /* Main Player Central */
-    .main-player {
-      display: flex; flex-direction: column; align-items: center;
-      text-align: center; transform: skew(var(--canvas-skew));
+    pre {
+      margin-top: 1.5rem;
+      padding: .75rem;
+      background: #020617;
+      border-radius: .5rem;
+      max-height: 220px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      font-size: .85rem;
     }
-    #trackImage {
-      width: 350px; height: 350px; border-radius: 1rem;
-      box-shadow: 0 40px 80px rgba(0,0,0,0.7);
-      margin-bottom: 2.5rem; border: 1px solid var(--glass-border);
-    }
-    #trackTitle { font-size: 2.5rem; font-weight: 800; margin: 0; }
-    #trackArtist { font-size: 1.2rem; color: var(--text-dim); margin: 0.5rem 0 2rem 0; }
-
-    /* Player Controls */
-    .player-controls { display: flex; gap: 2rem; align-items: center; }
-    .ctrl-btn { background: none; border: none; color: white; font-size: 2rem; cursor: pointer; opacity: 0.7; }
-    .ctrl-btn:hover { opacity: 1; transform: scale(1.1); }
-    #startBtn {
-      width: 70px; height: 70px; background: white; color: black;
-      border-radius: 50%; display: flex; align-items: center; justify-content: center;
-    }
-
-    /* Volume Bottom Right */
-    .volume-float {
-      position: fixed; bottom: 2rem; right: 2rem;
-      background: var(--glass-bg); backdrop-filter: blur(20px);
-      padding: 0.8rem 1.2rem; border-radius: 3rem;
-      border: 1px solid var(--glass-border);
-      display: flex; align-items: center; gap: 1rem;
-    }
-
-    /* Test Buttons */
-    .test-controls {
-      position: fixed; bottom: 2rem; left: 2rem;
-      background: var(--glass-bg); padding: 1rem; border-radius: 1rem; border: 1px solid var(--glass-border);
-    }
-    .emotion-btn {
-      background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
-      color: white; padding: 0.4rem 0.8rem; border-radius: 0.4rem; cursor: pointer; margin-right: 5px;
-    }
-
-    #log { display: none; }
   </style>
 </head>
 
-<body class="mood-happy">
+<body>
 
-<nav class="top-nav">
-  <button onclick="window.location='start.html'" class="btn-back">← Zurück</button>
-</nav>
+<h1>Spotify Emotion Player</h1>
 
-<section id="camera-section">
-  <video id="video-feed" autoplay muted playsinline></video>
-  <div class="emotion-bars-container">
-    <div><div class="bar-label">Happy</div><div class="emotion-bar-wrapper"><div id="bar-happy" class="emotion-bar-fill"></div></div></div>
-    <div><div class="bar-label">Sad</div><div class="emotion-bar-wrapper"><div id="bar-sad" class="emotion-bar-fill"></div></div></div>
-    <div><div class="bar-label">Angry</div><div class="emotion-bar-wrapper"><div id="bar-angry" class="emotion-bar-fill"></div></div></div>
-    <div><div class="bar-label">Neutral</div><div class="emotion-bar-wrapper"><div id="bar-neutral" class="emotion-bar-fill"></div></div></div>
+<button id="prevBtn" disabled>⏮</button>
+<button id="startBtn" disabled>▶️</button>
+<button id="nextBtn" disabled>⏭</button>
+
+<!-- Now Playing -->
+<div class="now-playing">
+  <img id="trackImage" src="" alt="Cover" />
+  <div class="now-playing-info">
+    <div id="trackTitle" class="track-title">–</div>
+    <div id="trackArtist" class="track-artist">–</div>
+
+    <div class="progress-row">
+      <span id="currentTime">0:00</span>
+      <input type="range" id="progressBar" min="0" max="0" value="0" disabled />
+      <span id="durationTime">0:00</span>
+    </div>
   </div>
-  <span id="emotion-text" style="display:none;">happy</span>
-</section>
-
-<main class="main-player">
-  <img id="trackImage" src="https://via.placeholder.com/400" alt="Cover" />
-  <h1 id="trackTitle">Warte auf Song...</h1>
-  <p id="trackArtist">System bereit</p>
-
-  <div class="player-controls">
-    <button id="prevBtn" class="ctrl-btn" disabled>⏮</button>
-    <button id="startBtn" class="ctrl-btn" disabled>▶</button>
-    <button id="nextBtn" class="ctrl-btn" disabled>⏭</button>
-  </div>
-
-  <div style="width: 100%; max-width: 450px; margin-top: 2rem; display: flex; align-items: center; gap: 10px;">
-    <span id="currentTime" style="font-size: 0.75rem; color: var(--text-dim);">0:00</span>
-    <input type="range" id="progressBar" style="flex: 1; height: 3px; accent-color: var(--accent-color);" min="0" max="0" value="0" disabled />
-    <span id="durationTime" style="font-size: 0.75rem; color: var(--text-dim);">0:00</span>
-  </div>
-</main>
-
-<div class="test-controls">
-  <div style="font-size: 0.65rem; color: var(--text-dim); margin-bottom: 8px;">1. EMOTION WÄHLEN (LIVE-BALKEN):</div>
-  <button class="emotion-btn" onclick="setLiveEmotion('happy')">Happy</button>
-  <button class="emotion-btn" onclick="setLiveEmotion('sad')">Sad</button>
-  <button class="emotion-btn" onclick="setLiveEmotion('angry')">Angry</button>
-
-  <div style="font-size: 0.65rem; color: var(--text-dim); margin: 12px 0 8px 0;">2. VIBE-WECHSEL ERZWINGEN (WIE SONGWECHSEL):</div>
-  <button class="emotion-btn" style="background: var(--accent-color); color: black;" onclick="triggerSongChange()">Neuer Song simulieren</button>
 </div>
 
+<!-- Lautstärke -->
 <div class="volume-float">
   <span>🔊</span>
   <input type="range" id="volumeSlider" min="0" max="100" value="50" disabled />
+  <span id="volumeValue">50%</span>
+</div>
+
+<h2>Emotion (manuell)</h2>
+<button class="emotion-btn" data-emotion="happy">Happy</button>
+<button class="emotion-btn" data-emotion="sad">Sad</button>
+<button class="emotion-btn" data-emotion="neutral">Neutral</button>
+<button class="emotion-btn" data-emotion="angry">Angry</button>
+
+<!-- Kamera-Emotionserkennung -->
+<h2>Emotionserkennung mit Kamera</h2>
+
+<div id="camera-section">
+  <video id="video-feed" width="320" height="240" autoplay muted playsinline></video>
+
+  <div id="emotion-container">
+    Aktuelle Emotion:<br>
+    <span id="emotion-text" style="font-weight:600;">Noch keine Daten…</span>
+  </div>
 </div>
 
 <pre id="log"></pre>
 
+<!-- face-api -->
 <script src="face-api.min.js"></script>
+
+<!-- Kamera-Emotionserkennung -->
 <script src="camera.js"></script>
+
+<!-- Spotify Player Logik -->
 <script type="module" src="app.js"></script>
 
-<script>
-  /**
-   * LOGIK: Vibe-Wechsel nur bei Song-Änderung
-   */
-
-          // 1. Live-Emotion für Balken (wird ständig von app.js/camera.js aktualisiert)
-  const emotionTextElem = document.getElementById('emotion-text');
-
-  // 2. Song-Titel Element beobachten
-  const trackTitleElem = document.getElementById('trackTitle');
-
-  // Funktion, die den Vibe basierend auf der AKTUELLEN Emotion setzt
-  function updateVibeToCurrentEmotion() {
-    const currentMood = emotionTextElem.innerText.toLowerCase().trim();
-    console.log("Songwechsel erkannt! Setze Vibe auf:", currentMood);
-
-    document.body.className = '';
-    if (currentMood.includes('happy')) document.body.classList.add('mood-happy');
-    else if (currentMood.includes('sad')) document.body.classList.add('mood-sad');
-    else if (currentMood.includes('angry')) document.body.classList.add('mood-angry');
-    else document.body.classList.add('mood-neutral');
-  }
-
-  // MutationObserver: Reagiert wenn app.js das Lied ändert
-  const songObserver = new MutationObserver(() => {
-    updateVibeToCurrentEmotion();
-  });
-
-  songObserver.observe(trackTitleElem, { childList: true, characterData: true, subtree: true });
-
-  // --- TEST FUNKTIONEN ---
-  function setLiveEmotion(mood) {
-    emotionTextElem.innerText = mood;
-    // Balken-Visualisierung (für Demo)
-    const emos = { happy: 0, sad: 0, angry: 0, neutral: 0 };
-    emos[mood] = 1;
-    document.getElementById('bar-happy').style.width = (emos.happy * 100) + '%';
-    document.getElementById('bar-sad').style.width = (emos.sad * 100) + '%';
-    document.getElementById('bar-angry').style.width = (emos.angry * 100) + '%';
-    document.getElementById('bar-neutral').style.width = (emos.neutral * 100) + '%';
-  }
-
-  function triggerSongChange() {
-    // Simuliert das Verhalten von Spotify/app.js: Titel ändert sich
-    trackTitleElem.innerText = "New Song " + Math.floor(Math.random() * 100);
-  }
-</script>
 </body>
 </html>
