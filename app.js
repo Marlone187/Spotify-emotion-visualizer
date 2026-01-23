@@ -63,6 +63,10 @@ let playerReady = false;
 let preEndHandledTrackId = null;
 let isSwitchingPlaylist = false;
 
+// ✅ NEW: Action Lock + Skip Guard (gegen Bug: “1 Sekunde von vorne” / konkurrierende Calls)
+let isPerformingAction = false;
+let skipGuardUntil = 0;
+
 // UI
 const startBtn = document.getElementById("startBtn");
 const prevBtn = document.getElementById("prevBtn");
@@ -239,6 +243,39 @@ async function wakeUpPlayback() {
 }
 
 // ===============================
+// ✅ NEW: Small helpers (Lock + Sleep + Smooth Fade)
+// ===============================
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function withActionLock(fn, label = "ACTION") {
+    if (isPerformingAction) {
+        log(`⛔ Aktion blockiert (${label}) – bereits eine Aktion aktiv.`);
+        return false;
+    }
+    isPerformingAction = true;
+    try {
+        return await fn();
+    } finally {
+        isPerformingAction = false;
+    }
+}
+
+async function fadeVolumeTo(target, durationMs = 450, steps = 15) {
+    if (!player) return;
+    try {
+        const start = await player.getVolume();
+        const diff = target - start;
+        if (!Number.isFinite(start)) return;
+
+        for (let i = 1; i <= steps; i++) {
+            const v = start + (diff * i) / steps;
+            try { await player.setVolume(Math.max(0, Math.min(1, v))); } catch {}
+            await sleep(durationMs / steps);
+        }
+    } catch {}
+}
+
+// ===============================
 // Auto: optional Emotion Buttons (falls auf index.html vorhanden)
 // ===============================
 function scheduleEmotionChange(emotion) {
@@ -267,6 +304,9 @@ function startProgressLoop() {
 
     progressInterval = setInterval(async () => {
         if (!player || isSeeking || isSwitchingPlaylist) return;
+
+        // ✅ Skip-Guard: während Skip keine “Song-Ende”-Evaluate auslösen
+        if (Date.now() < skipGuardUntil) return;
 
         try {
             const state = await player.getCurrentState();
@@ -302,11 +342,14 @@ function startProgressLoop() {
 }
 
 // ===============================
-// Auto: Emotion evaluieren & ggf. wechseln
+// Auto: Emotion evaluieren & ggf. wechseln (SMOOTH)
 // ===============================
 async function evaluateAndMaybeSwitchEmotion(reason) {
     if (SELECTED_MODE !== "auto") return false;
     if (isSwitchingPlaylist) return false;
+
+    // ✅ Skip-Guard blockt emotion switch während Skip
+    if (Date.now() < skipGuardUntil) return false;
 
     PLAYLISTS = getEffectivePlaylists();
 
@@ -330,19 +373,32 @@ async function evaluateAndMaybeSwitchEmotion(reason) {
 
     log("Playlistwechsel:", currentEmotion, "→", chosenEmotion, "| Grund:", reason);
 
-    isSwitchingPlaylist = true;
-    if (progressInterval) { clearInterval(progressInterval); progressInterval = null; }
+    return await withActionLock(async () => {
+        isSwitchingPlaylist = true;
+        if (progressInterval) { clearInterval(progressInterval); progressInterval = null; }
 
-    try { await player.pause(); } catch {}
+        // ✅ SMOOTH TRANSITION: Fade Down → Switch → Fade Up
+        const originalVol = (() => {
+            const v = Number(volumeSlider?.value);
+            if (Number.isFinite(v)) return Math.max(0, Math.min(100, v)) / 100;
+            return 0.5;
+        })();
 
-    await applyEmotionNow(chosenEmotion);
+        // leicht über 0, damit Spotify nicht “muted” weird reagiert
+        await fadeVolumeTo(0.05, 300, 12);
 
-    setTimeout(() => {
+        await applyEmotionNow(chosenEmotion);
+
+        // kurze Stabilisierung, damit keine UI/State “zurückspringt”
+        await sleep(150);
+
+        await fadeVolumeTo(originalVol, 450, 15);
+
+        // Re-Start Loop
         isSwitchingPlaylist = false;
         startProgressLoop();
-    }, 400);
-
-    return true;
+        return true;
+    }, `SWITCH_${reason}`);
 }
 
 // ===============================
@@ -392,7 +448,7 @@ async function initPlayerIfNeeded() {
         await transferPlaybackToWebSDKDevice();
         await wakeUpPlayback();
 
-        // 🔀 Shuffle (Erfolg ist 204, alles andere loggen)
+        // 🔀 Shuffle
         try {
             const shuffleRes = await fetch(
                 `https://api.spotify.com/v1/me/player/shuffle?state=true&device_id=${deviceId}`,
@@ -515,22 +571,45 @@ progressBar?.addEventListener("change", async (e) => {
 // ===============================
 prevBtn?.addEventListener("click", async () => {
     if (!player) return;
-    try { await player.previousTrack(); } catch (err) { log("Prev Fehler:", err); }
+    await withActionLock(async () => {
+        // Guard kurz setzen
+        skipGuardUntil = Date.now() + 900;
+        if (progressInterval) { clearInterval(progressInterval); progressInterval = null; }
+
+        try { await player.previousTrack(); } catch (err) { log("Prev Fehler:", err); }
+        await sleep(250);
+        startProgressLoop();
+        return true;
+    }, "PREV");
 });
 
 nextBtn?.addEventListener("click", async () => {
     if (!player) return;
 
-    try {
-        if (SELECTED_MODE === "auto") {
-            const changed = await evaluateAndMaybeSwitchEmotion("skip_next");
-            if (!changed) await player.nextTrack();
-        } else {
-            await player.nextTrack();
+    await withActionLock(async () => {
+        // ✅ Skip-Guard verhindert 1s “Restart” durch konkurrierende Evaluate/Loop
+        skipGuardUntil = Date.now() + 1100;
+
+        if (progressInterval) { clearInterval(progressInterval); progressInterval = null; }
+
+        try {
+            if (SELECTED_MODE === "auto") {
+                // Erst versuchen zu switchen (smooth) – wenn nicht gewechselt, normal skip
+                const changed = await evaluateAndMaybeSwitchEmotion("skip_next");
+                if (!changed) {
+                    await player.nextTrack();
+                }
+            } else {
+                await player.nextTrack();
+            }
+        } catch (err) {
+            log("Next Fehler:", err);
         }
-    } catch (err) {
-        log("Next Fehler:", err);
-    }
+
+        await sleep(250);
+        startProgressLoop();
+        return true;
+    }, "NEXT");
 });
 
 // ===============================
@@ -569,8 +648,8 @@ async function applyEmotionNow(emotion) {
         ? { context_uri: currentContextUri }
         : { uris: [currentContextUri] };
 
+    // ✅ Weniger aggressiv “wakeUp” bei Switch – aber Transfer bleibt wichtig
     await transferPlaybackToWebSDKDevice();
-    await wakeUpPlayback();
 
     const res = await fetch(
         `https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`,
