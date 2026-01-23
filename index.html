@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8" />
-  <title>Spotify Emotion Player | Dynamic UI</title>
+  <title>Spotify Emotion Player | Glow Edition</title>
 
   <script>
     if (!sessionStorage.getItem("spotify_access_token")) {
@@ -13,9 +13,8 @@
   <script src="https://sdk.scdn.co/spotify-player.js"></script>
 
   <style>
-    /* Definition der dynamischen Farben */
     :root {
-      --emotion-color: #1db954; /* Standard Spotify Green */
+      --emotion-color: #1db954;
       --emotion-bg: rgba(29, 185, 84, 0.15);
       --bg-dark: #050816;
       --card-bg: rgba(18, 18, 18, 0.9);
@@ -27,7 +26,6 @@
     body {
       font-family: 'Inter', system-ui, -apple-system, sans-serif;
       background-color: var(--bg-dark);
-      /* Dynamischer Hintergrund-Glow */
       background-image: radial-gradient(circle at 50% -20%, var(--emotion-bg), transparent);
       color: var(--text-main);
       margin: 0;
@@ -40,7 +38,6 @@
       transition: background 0.8s ease;
     }
 
-    /* --- HOME BUTTON --- */
     .home-btn {
       position: fixed;
       top: 2rem;
@@ -65,7 +62,6 @@
       transform: scale(1.05);
     }
 
-    /* --- WEBCAM & STATS --- */
     .camera-overlay {
       position: fixed;
       top: 1.5rem;
@@ -95,10 +91,40 @@
     .status-highlight { color: var(--emotion-color); transition: color 0.5s; }
     .song-summary { font-size: 0.75rem; color: var(--emotion-color); margin-bottom: 1.25rem; transition: color 0.5s; }
 
-    .bar-bg { background: #282828; height: 8px; border-radius: 4px; overflow: hidden; }
-    .bar-fill { height: 100%; width: 0%; transition: width 0.5s ease; }
+    /* --- GLOW-BALKEN CSS --- */
+    .bar-bg {
+      background: #1a1a1a;
+      height: 10px;
+      border-radius: 5px;
+      overflow: visible; /* Wichtig für den Glow nach außen */
+      margin-top: 5px;
+    }
+    .bar-fill {
+      height: 100%;
+      width: 0%;
+      transition: width 0.5s cubic-bezier(0.17, 0.67, 0.83, 0.67);
+      border-radius: 5px;
+      position: relative;
+    }
 
-    /* --- PLAYER --- */
+    /* Individuelle Glow-Farben für die Balken */
+    #bar-happy {
+      background: #22c55e;
+      box-shadow: 0 0 12px rgba(34, 197, 94, 0.8), 0 0 4px rgba(34, 197, 94, 0.4);
+    }
+    #bar-neutral {
+      background: #f8fafc;
+      box-shadow: 0 0 12px rgba(255, 255, 255, 0.6), 0 0 4px rgba(255, 255, 255, 0.3);
+    }
+    #bar-sad {
+      background: #3b82f6;
+      box-shadow: 0 0 12px rgba(59, 130, 246, 0.8), 0 0 4px rgba(59, 130, 246, 0.4);
+    }
+    #bar-angry {
+      background: #ef4444;
+      box-shadow: 0 0 12px rgba(239, 68, 68, 0.8), 0 0 4px rgba(239, 68, 68, 0.4);
+    }
+
     .main-player { display: flex; flex-direction: column; align-items: center; text-align: center; }
     #trackImage { width: 300px; height: 300px; border-radius: 12px; box-shadow: 0 15px 50px rgba(0,0,0,0.7); margin-bottom: 1.5rem; }
     #trackTitle { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.2rem; }
@@ -113,7 +139,6 @@
     #startBtn { background: white; color: black; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
     #startBtn:hover { transform: scale(1.1); background: var(--emotion-color); color: white; }
 
-    /* --- LAUTSTÄRKE --- */
     .volume-control { position: fixed; bottom: 2rem; left: 2rem; display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.6); padding: 8px 16px; border-radius: 20px; }
     #volumeSlider { accent-color: var(--emotion-color); width: 80px; }
 
@@ -132,20 +157,20 @@
     <div class="song-summary" id="song-summary">Playlist-Modus: Standard</div>
 
     <div class="bar-group">
-      <div class="bar-header" style="display:flex; justify-content:space-between; font-size:10px; margin-bottom:4px;"><span>Happy</span><span id="val-happy">0%</span></div>
-      <div class="bar-bg"><div id="bar-happy" class="bar-fill" style="background: #22c55e;"></div></div>
+      <div class="bar-header" style="display:flex; justify-content:space-between; font-size:10px;"><span>Happy</span><span id="val-happy">0%</span></div>
+      <div class="bar-bg"><div id="bar-happy" class="bar-fill"></div></div>
     </div>
-    <div class="bar-group" style="margin-top:8px;">
-      <div class="bar-header" style="display:flex; justify-content:space-between; font-size:10px; margin-bottom:4px;"><span>Neutral</span><span id="val-neutral">0%</span></div>
-      <div class="bar-bg"><div id="bar-neutral" class="bar-fill" style="background: #ffffff;"></div></div>
+    <div class="bar-group" style="margin-top:12px;">
+      <div class="bar-header" style="display:flex; justify-content:space-between; font-size:10px;"><span>Neutral</span><span id="val-neutral">0%</span></div>
+      <div class="bar-bg"><div id="bar-neutral" class="bar-fill"></div></div>
     </div>
-    <div class="bar-group" style="margin-top:8px;">
-      <div class="bar-header" style="display:flex; justify-content:space-between; font-size:10px; margin-bottom:4px;"><span>Sad</span><span id="val-sad">0%</span></div>
-      <div class="bar-bg"><div id="bar-sad" class="bar-fill" style="background: #3b82f6;"></div></div>
+    <div class="bar-group" style="margin-top:12px;">
+      <div class="bar-header" style="display:flex; justify-content:space-between; font-size:10px;"><span>Sad</span><span id="val-sad">0%</span></div>
+      <div class="bar-bg"><div id="bar-sad" class="bar-fill"></div></div>
     </div>
-    <div class="bar-group" style="margin-top:8px;">
-      <div class="bar-header" style="display:flex; justify-content:space-between; font-size:10px; margin-bottom:4px;"><span>Angry</span><span id="val-angry">0%</span></div>
-      <div class="bar-bg"><div id="bar-angry" class="bar-fill" style="background: #ef4444;"></div></div>
+    <div class="bar-group" style="margin-top:12px;">
+      <div class="bar-header" style="display:flex; justify-content:space-between; font-size:10px;"><span>Angry</span><span id="val-angry">0%</span></div>
+      <div class="bar-bg"><div id="bar-angry" class="bar-fill"></div></div>
     </div>
   </div>
 </div>
@@ -183,26 +208,20 @@
 </div>
 
 <script>
-  /**
-   * Ändert das Farbschema der gesamten Website basierend auf der Emotion.
-   * Diese Funktion sollte von deiner app.js aufgerufen werden, sobald die Playlist wechselt.
-   */
   function setEmotionTheme(emotion) {
     const root = document.documentElement;
     const themes = {
-      happy:   { color: '#b9a41d', bg: 'rgba(29, 185, 84, 0.2)' },   // Spotify Grün
-      sad:     { color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.2)' },  // Blau
-      neutral: { color: '#ffffff', bg: 'rgba(255, 255, 255, 0.1)' }, // Weiß/Grau
-      angry:   { color: '#ef4444', bg: 'rgba(239, 68, 68, 0.2)' }    // Rot
+      happy:   { color: '#22c55e', bg: 'rgba(34, 197, 94, 0.2)' },
+      sad:     { color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.2)' },
+      neutral: { color: '#ffffff', bg: 'rgba(255, 255, 255, 0.1)' },
+      angry:   { color: '#ef4444', bg: 'rgba(239, 68, 68, 0.2)' }
     };
 
     const theme = themes[emotion] || themes.neutral;
 
-    // CSS Variablen aktualisieren
     root.style.setProperty('--emotion-color', theme.color);
     root.style.setProperty('--emotion-bg', theme.bg);
 
-    // Optional: Text-Info aktualisieren
     const summary = document.getElementById('song-summary');
     if(summary) summary.innerText = `Playlist-Modus: ${emotion.toUpperCase()}`;
   }
