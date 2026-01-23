@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8" />
-  <title>Spotify Emotion Player | Pro UI</title>
+  <title>Spotify Emotion Player | Pro UI v2</title>
 
   <script>
     if (!sessionStorage.getItem("spotify_access_token")) {
@@ -51,8 +51,9 @@
     }
 
     #video-feed {
-      width: 200px;
-      height: 150px;
+      /* 1. Änderung: Größe angepasst (größer) */
+      width: 280px;
+      height: 210px;
       border-radius: 12px;
       background: #000;
       border: 2px solid var(--card-bg);
@@ -66,8 +67,10 @@
       padding: 1rem;
       border-radius: 12px;
       backdrop-filter: blur(10px);
-      width: 200px;
+      /* 1. Änderung: Breite angepasst an Video */
+      width: 280px;
       border: 1px solid rgba(255,255,255,0.1);
+      box-sizing: border-box;
     }
 
     .emotion-bar-container {
@@ -258,6 +261,12 @@
       Happy
       <div class="bar-bg"><div id="bar-happy" class="bar-fill" style="background: #22c55e; width: 0%"></div></div>
     </div>
+
+    <div class="emotion-bar-container">
+      Neutral
+      <div class="bar-bg"><div id="bar-neutral" class="bar-fill" style="background: #ffffff; width: 0%"></div></div>
+    </div>
+
     <div class="emotion-bar-container">
       Sad
       <div class="bar-bg"><div id="bar-sad" class="bar-fill" style="background: #3b82f6; width: 0%"></div></div>
@@ -308,11 +317,6 @@
 <script src="face-api.min.js"></script>
 <script src="camera.js"></script>
 <script type="module" src="app.js"></script>
-
-<script>
-  // Dies simuliert die Balken-Bewegung, wenn deine camera.js die Emotionen erkennt.
-  // Du kannst in camera.js einfach document.getElementById('bar-happy').style.width = value + '%' setzen.
-</script>
 
 </body>
 </html>
