@@ -12,7 +12,9 @@ const DEFAULT_PLAYLISTS = {
     angry: "spotify:playlist:55DSMbgOO36tDodpwCykG4",
 };
 
-// Custom Playlists (Prototyp) aus localStorage
+// ===============================
+// CUSTOM PLAYLISTS
+// ===============================
 function loadCustomPlaylists() {
     const raw = localStorage.getItem("custom_playlists");
     if (!raw) return null;
@@ -33,23 +35,16 @@ function getEffectivePlaylists() {
 
 let PLAYLISTS = getEffectivePlaylists();
 
-// Startemotion
+// ===============================
+// STATE
+// ===============================
 let currentEmotion =
     SELECTED_MODE === "manual"
         ? (sessionStorage.getItem("manual_emotion") || "happy")
         : "happy";
 
 let currentContextUri = PLAYLISTS[currentEmotion];
-
-// Auto: Button override
 let pendingEmotion = null;
-
-// Logging
-const logEl = document.getElementById("log");
-const log = (...msg) => {
-    if (logEl) logEl.textContent += msg.join(" ") + "\n";
-    console.log(...msg);
-};
 
 // Token / Player
 let accessToken = sessionStorage.getItem("spotify_access_token") || null;
@@ -63,11 +58,10 @@ let playerReady = false;
 let preEndHandledTrackId = null;
 let isSwitchingPlaylist = false;
 
-// ✅ NEW: Audio-Transition Lock (verhindert “1s Stille” bei Next nach Emotion-Switch)
-let isAudioTransition = false;
-let queuedNext = false;
-
+// ===============================
 // UI
+// ===============================
+const logEl = document.getElementById("log");
 const startBtn = document.getElementById("startBtn");
 const prevBtn = document.getElementById("prevBtn");
 const nextBtn = document.getElementById("nextBtn");
@@ -83,7 +77,17 @@ const volumeValueEl = document.getElementById("volumeValue");
 const PLAY_ICON = "▶️";
 const PAUSE_ICON = "⏸️";
 
-// Start-Button enable
+// ===============================
+// LOG
+// ===============================
+const log = (...msg) => {
+    if (logEl) logEl.textContent += msg.join(" ") + "\n";
+    console.log(...msg);
+};
+
+// ===============================
+// START BUTTON ENABLE
+// ===============================
 if (startBtn) {
     if (accessToken) {
         startBtn.disabled = false;
@@ -94,13 +98,15 @@ if (startBtn) {
     }
 }
 
-// Timeline
+// ===============================
+// TIMELINE
+// ===============================
 let isSeeking = false;
 let currentDurationMs = 0;
 let progressInterval = null;
 
 // ===============================
-// TOKEN EXCHANGE (nur callback.html)
+// TOKEN EXCHANGE (callback.html)
 // ===============================
 async function exchangeCodeForToken(code) {
     const verifier = sessionStorage.getItem("code_verifier");
@@ -131,30 +137,29 @@ async function exchangeCodeForToken(code) {
 }
 
 // ===============================
-// CALLBACK LOGIK
+// CALLBACK LOGIC
 // ===============================
 (async () => {
-    const isCallbackPage = window.location.pathname.endsWith("callback.html");
-    if (!isCallbackPage) return;
+    if (!window.location.pathname.endsWith("callback.html")) return;
 
     const url = new URL(window.location.href);
     const code = url.searchParams.get("code");
 
-    if (code) {
-        log("Code empfangen:", code);
-        await exchangeCodeForToken(code);
+    if (!code) return;
 
-        if (sessionStorage.getItem("spotify_access_token")) {
-            log("Weiterleitung zu start.html ...");
-            window.location = "start.html";
-        } else {
-            log("❌ Kein Token nach Exchange.");
-        }
+    log("Code empfangen:", code);
+    await exchangeCodeForToken(code);
+
+    if (sessionStorage.getItem("spotify_access_token")) {
+        log("Weiterleitung zu start.html ...");
+        window.location = "start.html";
+    } else {
+        log("❌ Kein Token nach Exchange.");
     }
 })();
 
 // ===============================
-// ✅ FIX: Transfer Playback (gegen 403 Restriction violated)
+// SPOTIFY HELPERS
 // ===============================
 async function transferPlaybackToWebSDKDevice() {
     if (!deviceId || !accessToken) return false;
@@ -175,23 +180,22 @@ async function transferPlaybackToWebSDKDevice() {
         });
 
         if (res.status === 204) {
-            log("✅ Transfer Playback OK (204).");
+            log("✅ Transfer Playback OK (204)");
             await new Promise((r) => setTimeout(r, 300));
             return true;
         }
 
         const text = await res.text();
-        log("⚠️ Transfer Playback Antwort:", res.status, text);
-        await new Promise((r) => setTimeout(r, 300));
-        return res.ok;
+        log("⚠️ Transfer Antwort:", res.status, text);
+        return false;
     } catch (e) {
-        log("❌ Transfer Playback Error:", e);
+        log("❌ Transfer Error:", e);
         return false;
     }
 }
 
 // ===============================
-// ✅ Debug (zeigt oft restrictions/disallows)
+// DEBUG
 // ===============================
 async function debugPlayerState(label = "DEBUG") {
     try {
@@ -220,21 +224,7 @@ async function debugPlayerState(label = "DEBUG") {
 }
 
 // ===============================
-// ✅ Wake-up (FIXED: kein play mehr)
-// ===============================
-async function wakeUpPlayback() {
-    try {
-        await fetch(`https://api.spotify.com/v1/me/player/pause?device_id=${deviceId}`, {
-            method: "PUT",
-            headers: { Authorization: "Bearer " + accessToken },
-        });
-    } catch {}
-
-    await new Promise((r) => setTimeout(r, 80));
-}
-
-// ===============================
-// ✅ CLEAN SWITCH (Hard-Mute + Lock + Queue Next)
+// CLEAN SWITCH SYSTEM
 // ===============================
 async function setDeviceVolumePercent(percent) {
     if (!deviceId || !accessToken) return;
@@ -250,26 +240,16 @@ async function setDeviceVolumePercent(percent) {
     } catch {}
 }
 
-function getUiVolumePercentFallback() {
-    const v = Number(volumeSlider?.value);
-    return Number.isFinite(v) ? Math.max(0, Math.min(100, v)) : 50;
-}
-
-async function setSdkVolumePercent(percent) {
-    if (!player) return;
-    const p = Math.max(0, Math.min(100, Math.round(percent)));
-    try { await player.setVolume(p / 100); } catch {}
+async function getCurrentVolumePercentFallback() {
+    if (volumeSlider && volumeSlider.value) return Number(volumeSlider.value);
+    return 50;
 }
 
 async function fadeDeviceVolume(from, to, ms = 300, steps = 12) {
-    const a = Math.max(0, Math.min(100, Number(from)));
-    const b = Math.max(0, Math.min(100, Number(to)));
     const stepMs = Math.max(10, Math.floor(ms / steps));
-
     for (let i = 1; i <= steps; i++) {
-        const v = a + ((b - a) * i) / steps;
+        const v = from + ((to - from) * i) / steps;
         await setDeviceVolumePercent(v);
-        await setSdkVolumePercent(v); // ✅ Sync: SDK volume mitziehen
         await new Promise((r) => setTimeout(r, stepMs));
     }
 }
@@ -285,113 +265,86 @@ async function pauseHard() {
 
 async function playContextHard(body) {
     try {
-        return await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
-            method: "PUT",
-            headers: {
-                Authorization: "Bearer " + accessToken,
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify(body),
-        });
+        return await fetch(
+            `https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`,
+            {
+                method: "PUT",
+                headers: {
+                    Authorization: "Bearer " + accessToken,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(body),
+            }
+        );
     } catch (e) {
         log("playContextHard error:", e);
         return null;
     }
 }
 
-function setControlsDisabled(disabled) {
-    // optional: nicht hart nötig, aber verhindert Race Conditions bei schnellen Klicks
-    if (prevBtn) prevBtn.disabled = disabled;
-    if (nextBtn) nextBtn.disabled = disabled;
-    // startBtn lassen wir aktiv, weil Pause/Resume evtl. gewünscht ist – kann man auch sperren.
-}
-
+// ===============================
+// 🎧 CLEAN PLAY
+// ===============================
 async function cleanSwitchPlay(body) {
     if (!deviceId || !accessToken) return null;
 
-    // ✅ Lock, damit Next/Prev nicht mitten in der Transition kommt
-    isAudioTransition = true;
-    setControlsDisabled(true);
+    const originalVol = await getCurrentVolumePercentFallback();
 
-    const originalVol = getUiVolumePercentFallback();
+    // HARD MUTE
+    await setDeviceVolumePercent(0);
 
-    try {
-        // 🔇 HARD MUTE (beide Layer)
-        await setDeviceVolumePercent(0);
-        await setSdkVolumePercent(0);
+    // DOUBLE PAUSE
+    await pauseHard();
+    await new Promise((r) => setTimeout(r, 80));
+    await pauseHard();
 
-        // ⏸ Double pause (reduziert “old track blip” + garantiert Ruhe)
-        await pauseHard();
-        await new Promise((r) => setTimeout(r, 40));
-        await pauseHard();
+    // FORCE START NEW CONTEXT AT 0
+    const safeBody = {
+        ...body,
+        position_ms: 0,
+        offset: body.context_uri ? { position: 0 } : undefined,
+    };
 
-        // ▶️ Force new context at 0
-        const safeBody = body.context_uri
-            ? { ...body, offset: { position: 0 }, position_ms: 0 }
-            : { ...body, position_ms: 0 };
+    const res = await playContextHard(safeBody);
 
-        const res = await playContextHard(safeBody);
+    // WAIT FOR SWITCH
+    await new Promise((r) => setTimeout(r, 200));
 
-        // kurze Zeit für Spotify umzustellen
-        await new Promise((r) => setTimeout(r, 90));
+    // FADE IN
+    await fadeDeviceVolume(0, originalVol, 350, 14);
 
-        // 🔊 Fade in
-        await fadeDeviceVolume(0, originalVol, 180, 8);
-
-        // UI Slider wieder konsistent halten
-        if (volumeSlider) volumeSlider.value = String(originalVol);
-        if (volumeValueEl) volumeValueEl.textContent = `${originalVol}%`;
-
-        return res;
-    } finally {
-        isAudioTransition = false;
-        setControlsDisabled(false);
-
-        // ✅ Wenn während Transition “Next” gedrückt wurde → jetzt ausführen
-        if (queuedNext && player) {
-            queuedNext = false;
-            try {
-                await player.nextTrack();
-            } catch (e) {
-                log("queuedNext nextTrack error:", e);
-            }
-        }
-    }
+    return res;
 }
 
 // ===============================
-// Auto: optional Emotion Buttons (falls auf index.html vorhanden)
+// EMOTION BUTTONS
 // ===============================
 function scheduleEmotionChange(emotion) {
     PLAYLISTS = getEffectivePlaylists();
-    if (!PLAYLISTS[emotion]) {
-        log("Unbekannte Emotion:", emotion);
-        return;
-    }
+    if (!PLAYLISTS[emotion]) return;
     pendingEmotion = emotion;
-    log("Neue Emotion per Button geplant:", emotion);
+    log("Neue Emotion geplant:", emotion);
 }
 
 document.querySelectorAll("[data-emotion]").forEach((btn) => {
     btn.addEventListener("click", () => {
-        const emo = btn.getAttribute("data-emotion");
-        scheduleEmotionChange(emo);
+        scheduleEmotionChange(btn.getAttribute("data-emotion"));
     });
 });
 
 // ===============================
-// Progress Loop
+// PROGRESS LOOP
 // ===============================
 function startProgressLoop() {
     if (!player) return;
     if (progressInterval) clearInterval(progressInterval);
 
     progressInterval = setInterval(async () => {
-        if (!player || isSeeking || isSwitchingPlaylist || isAudioTransition) return;
+        if (!player || isSeeking || isSwitchingPlaylist) return;
 
         try {
             const state = await player.getCurrentState();
-            if (!state || !state.track_window || !state.track_window.current_track) return;
+            if (!state || !state.track_window?.current_track) return;
 
             updateNowPlayingUI(state);
 
@@ -403,84 +356,65 @@ function startProgressLoop() {
             if (!currentId || !duration) return;
 
             if (currentId !== lastTrackId) {
-                if (lastTrackId) log("🎵 Songwechsel:", lastTrackId, "→", currentId);
                 lastTrackId = currentId;
                 preEndHandledTrackId = null;
             }
 
             if (SELECTED_MODE === "auto") {
                 const remaining = duration - position;
-                if (remaining <= 1500 && remaining >= 0 && preEndHandledTrackId !== currentId) {
+                if (remaining <= 1500 && preEndHandledTrackId !== currentId) {
                     preEndHandledTrackId = currentId;
-                    log(`⏱ Song endet bald (Rest: ${Math.round(remaining)}ms) → Emotion auswerten.`);
                     await evaluateAndMaybeSwitchEmotion("song_end");
                 }
             }
-        } catch (err) {
-            log("getCurrentState Fehler:", err);
-        }
+        } catch {}
     }, 500);
 }
 
 // ===============================
-// Auto: Emotion evaluieren & ggf. wechseln
+// AUTO SWITCH
 // ===============================
 async function evaluateAndMaybeSwitchEmotion(reason) {
-    if (SELECTED_MODE !== "auto") return false;
-    if (isSwitchingPlaylist || isAudioTransition) return false;
+    if (SELECTED_MODE !== "auto" || isSwitchingPlaylist) return false;
 
     PLAYLISTS = getEffectivePlaylists();
-
     let chosenEmotion = null;
 
     if (pendingEmotion && PLAYLISTS[pendingEmotion]) {
         chosenEmotion = pendingEmotion;
-        log("Button-Emotion:", chosenEmotion);
     } else if (typeof window.getDominantEmotion === "function") {
-        const cameraEmotion = window.getDominantEmotion();
-        if (cameraEmotion && PLAYLISTS[cameraEmotion]) {
-            chosenEmotion = cameraEmotion;
-            log("Kamera-Emotion:", chosenEmotion);
-        }
+        const cam = window.getDominantEmotion();
+        if (cam && PLAYLISTS[cam]) chosenEmotion = cam;
     }
 
     pendingEmotion = null;
-    if (typeof window.resetEmotionStats === "function") window.resetEmotionStats();
-
     if (!chosenEmotion || chosenEmotion === currentEmotion) return false;
 
-    log("Playlistwechsel:", currentEmotion, "→", chosenEmotion, "| Grund:", reason);
-
     isSwitchingPlaylist = true;
-    if (progressInterval) { clearInterval(progressInterval); progressInterval = null; }
-
-    try { await player.pause(); } catch {}
+    if (progressInterval) clearInterval(progressInterval);
 
     await applyEmotionNow(chosenEmotion);
 
     setTimeout(() => {
         isSwitchingPlaylist = false;
         startProgressLoop();
-    }, 400);
+    }, 500);
 
     return true;
 }
 
 // ===============================
-// Spotify SDK Ready
+// SDK READY
 // ===============================
 window.onSpotifyWebPlaybackSDKReady = () => {
     log("Spotify Web Playback SDK geladen");
 };
 
 // ===============================
-// Player Init
+// INIT PLAYER
 // ===============================
 async function initPlayerIfNeeded() {
-    if (player || playerReady) return;
-    if (!accessToken) return;
-
-    log("Initialisiere Spotify Player...");
+    if (player || playerReady || !accessToken) return;
 
     player = new Spotify.Player({
         name: "Emotion Player",
@@ -496,43 +430,8 @@ async function initPlayerIfNeeded() {
         currentContextUri = PLAYLISTS[currentEmotion];
 
         log("Player ready:", deviceId);
-        log("Startemotion:", currentEmotion, "→", currentContextUri);
 
-        if (prevBtn) prevBtn.disabled = false;
-        if (nextBtn) nextBtn.disabled = false;
-        if (volumeSlider) volumeSlider.disabled = false;
-
-        try {
-            const vol = await player.getVolume();
-            const volPercent = Math.round(vol * 100);
-            if (volumeSlider) volumeSlider.value = String(volPercent);
-            if (volumeValueEl) volumeValueEl.textContent = volPercent + "%";
-        } catch {}
-
-        // ✅ Transfer + Wake-up
         await transferPlaybackToWebSDKDevice();
-        await wakeUpPlayback();
-
-        // 🔀 Shuffle (Erfolg ist 204, alles andere loggen)
-        try {
-            const shuffleRes = await fetch(
-                `https://api.spotify.com/v1/me/player/shuffle?state=true&device_id=${deviceId}`,
-                { method: "PUT", headers: { Authorization: "Bearer " + accessToken } }
-            );
-
-            if (shuffleRes.status === 204) {
-                log("Shuffle aktiviert ✅");
-            } else {
-                const t = await shuffleRes.text();
-                log("Shuffle Fehler:", shuffleRes.status, t);
-            }
-        } catch (e) {
-            log("Shuffle Request Error:", e);
-        }
-
-        if (SELECTED_MODE === "auto") {
-            if (typeof window.resetEmotionStats === "function") window.resetEmotionStats();
-        }
 
         await startPlayback();
         isPlaying = true;
@@ -541,21 +440,16 @@ async function initPlayerIfNeeded() {
         startProgressLoop();
     });
 
-    player.addListener("initialization_error", ({ message }) => log("Init Error:", message));
-    player.addListener("authentication_error", ({ message }) => log("Auth Error:", message));
-    player.addListener("account_error", ({ message }) => log("Account Error:", message));
-    player.addListener("playback_error", ({ message }) => log("Playback Error:", message));
-
     await player.connect();
 }
 
 // ===============================
-// Start Button Toggle
+// PLAY / PAUSE
 // ===============================
 startBtn?.addEventListener("click", async () => {
     if (!accessToken) return;
 
-    if (!playerReady || !player) {
+    if (!playerReady) {
         await initPlayerIfNeeded();
         return;
     }
@@ -564,123 +458,92 @@ startBtn?.addEventListener("click", async () => {
         if (isPlaying) {
             await player.pause();
             isPlaying = false;
-            if (startBtn) startBtn.textContent = PLAY_ICON;
-            log("Playback pausiert.");
+            startBtn.textContent = PLAY_ICON;
         } else {
             await player.resume();
             isPlaying = true;
-            if (startBtn) startBtn.textContent = PAUSE_ICON;
-            log("Playback fortgesetzt.");
+            startBtn.textContent = PAUSE_ICON;
         }
-    } catch (err) {
-        log("Pause/Resume Fehler:", err);
-    }
+    } catch {}
 });
 
 // ===============================
-// Now Playing UI / Timeline
+// UI HELPERS
 // ===============================
 function msToTime(ms) {
-    if (!Number.isFinite(ms) || ms < 0) ms = 0;
-    const totalSeconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+    const s = Math.floor(ms / 1000);
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
 function updateNowPlayingUI(state) {
     const track = state.track_window.current_track;
     if (!track) return;
 
-    if (trackImage) {
-        const img = track.album?.images?.[0];
-        trackImage.src = img ? img.url : "";
-    }
+    const img = track.album?.images?.[0];
+    if (trackImage) trackImage.src = img?.url || "";
 
-    if (trackTitleEl) trackTitleEl.textContent = track.name || "Unbekannter Titel";
-    if (trackArtistEl) {
-        const artistNames = (track.artists || []).map((a) => a.name).join(", ");
-        trackArtistEl.textContent = artistNames || "Unbekannter Artist";
-    }
+    if (trackTitleEl) trackTitleEl.textContent = track.name || "";
+    if (trackArtistEl)
+        trackArtistEl.textContent =
+            track.artists?.map((a) => a.name).join(", ") || "";
 
-    const position = state.position || 0;
-    const duration = state.duration || track.duration_ms || 0;
-    currentDurationMs = duration;
+    const pos = state.position || 0;
+    const dur = state.duration || track.duration_ms || 0;
+    currentDurationMs = dur;
 
-    if (durationEl) durationEl.textContent = msToTime(duration);
-    if (!isSeeking && currentTimeEl) currentTimeEl.textContent = msToTime(position);
+    if (currentTimeEl) currentTimeEl.textContent = msToTime(pos);
+    if (durationEl) durationEl.textContent = msToTime(dur);
 
-    if (progressBar) {
-        progressBar.disabled = duration <= 0;
-        progressBar.max = String(duration);
-        if (!isSeeking) progressBar.value = String(position);
+    if (progressBar && !isSeeking) {
+        progressBar.max = String(dur);
+        progressBar.value = String(pos);
     }
 }
 
+// ===============================
+// SEEK
+// ===============================
 progressBar?.addEventListener("input", (e) => {
-    if (!currentDurationMs) return;
     isSeeking = true;
-    const newPos = Number(e.target.value);
-    if (currentTimeEl) currentTimeEl.textContent = msToTime(newPos);
+    if (currentTimeEl) currentTimeEl.textContent = msToTime(Number(e.target.value));
 });
 
 progressBar?.addEventListener("change", async (e) => {
-    if (!player) { isSeeking = false; return; }
-    const newPos = Number(e.target.value);
-    try { await player.seek(newPos); } catch (err) { log("Seek Fehler:", err); }
+    try { await player.seek(Number(e.target.value)); } catch {}
     isSeeking = false;
 });
 
 // ===============================
-// Prev / Next
+// TRACK CONTROLS
 // ===============================
 prevBtn?.addEventListener("click", async () => {
-    if (!player) return;
-    if (isAudioTransition || isSwitchingPlaylist) return;
-    try { await player.previousTrack(); } catch (err) { log("Prev Fehler:", err); }
+    try { await player.previousTrack(); } catch {}
 });
 
 nextBtn?.addEventListener("click", async () => {
-    if (!player) return;
-
-    // ✅ Wenn gerade Emotion-Transition läuft: Next merken und später ausführen
-    if (isAudioTransition || isSwitchingPlaylist) {
-        queuedNext = true;
-        log("⏭️ Next queued (Transition läuft)...");
-        return;
-    }
-
-    try {
-        if (SELECTED_MODE === "auto") {
-            const changed = await evaluateAndMaybeSwitchEmotion("skip_next");
-            if (!changed) await player.nextTrack();
-        } else {
-            await player.nextTrack();
-        }
-    } catch (err) {
-        log("Next Fehler:", err);
+    if (SELECTED_MODE === "auto") {
+        const changed = await evaluateAndMaybeSwitchEmotion("skip_next");
+        if (!changed) await player.nextTrack();
+    } else {
+        await player.nextTrack();
     }
 });
 
 // ===============================
-// Volume
+// VOLUME UI
 // ===============================
 volumeSlider?.addEventListener("input", async (e) => {
     const val = Number(e.target.value);
     if (volumeValueEl) volumeValueEl.textContent = `${val}%`;
-    if (!player) return;
-    try { await player.setVolume(val / 100); } catch (err) { log("setVolume Fehler:", err); }
+    try { await player.setVolume(val / 100); } catch {}
 });
 
 // ===============================
-// ✅ Playlist setzen (Manual & Auto) + 403 Debug
+// APPLY EMOTION
 // ===============================
 async function applyEmotionNow(emotion) {
     PLAYLISTS = getEffectivePlaylists();
-    if (!PLAYLISTS[emotion]) {
-        log("Unbekannte Emotion:", emotion);
-        return;
-    }
+    if (!PLAYLISTS[emotion]) return;
 
     currentEmotion = emotion;
     currentContextUri = PLAYLISTS[currentEmotion];
@@ -689,17 +552,11 @@ async function applyEmotionNow(emotion) {
         sessionStorage.setItem("manual_emotion", currentEmotion);
     }
 
-    if (!deviceId || !accessToken) {
-        log("Kein Device/Token – kann nicht play setzen.");
-        return;
-    }
-
     const body = currentContextUri.startsWith("spotify:playlist")
-        ? { context_uri: currentContextUri, offset: { position: 0 }, position_ms: 0 }
-        : { uris: [currentContextUri], position_ms: 0 };
+        ? { context_uri: currentContextUri }
+        : { uris: [currentContextUri] };
 
     await transferPlaybackToWebSDKDevice();
-    await wakeUpPlayback();
 
     const res = await cleanSwitchPlay(body);
 
@@ -709,10 +566,9 @@ async function applyEmotionNow(emotion) {
     }
 
     const txt = res ? await res.text() : "";
-    log("Fehler beim Wechseln:", res?.status, txt);
+    log("Fehler:", res?.status, txt);
 
     if (res?.status === 403) {
-        log("⚠️ 403 Restriction violated → Debug Infos:");
         await debugPlayerState("403_APPLY");
     }
 }
@@ -720,23 +576,15 @@ async function applyEmotionNow(emotion) {
 window.applyEmotionNow = applyEmotionNow;
 
 // ===============================
-// Start playback + 403 Debug
+// START PLAYBACK
 // ===============================
 async function startPlayback() {
-    if (!deviceId) {
-        log("Kein deviceId.");
-        return;
-    }
-
     PLAYLISTS = getEffectivePlaylists();
     currentContextUri = PLAYLISTS[currentEmotion];
 
     const body = currentContextUri.startsWith("spotify:playlist")
-        ? { context_uri: currentContextUri, offset: { position: 0 }, position_ms: 0 }
-        : { uris: [currentContextUri], position_ms: 0 };
-
-    await transferPlaybackToWebSDKDevice();
-    await wakeUpPlayback();
+        ? { context_uri: currentContextUri }
+        : { uris: [currentContextUri] };
 
     const res = await cleanSwitchPlay(body);
 
@@ -749,12 +597,6 @@ async function startPlayback() {
     log("Fehler:", res?.status, txt);
 
     if (res?.status === 403) {
-        log("⚠️ 403 Restriction violated → Debug Infos:");
         await debugPlayerState("403_START");
-
-        log(
-            "Hinweis: Wenn Transfer (204) klappt, aber /play trotzdem 403 ist, " +
-            "ist es sehr oft: Nutzer nicht als Tester eingetragen (Dev Mode) oder Premium/Account-Restriction."
-        );
     }
 }
