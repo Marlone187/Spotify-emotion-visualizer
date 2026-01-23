@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8" />
-  <title>Spotify Emotion Player | Vibrant Glow Edition</title>
+  <title>Spotify Emotion Player | Yellow Glow Edition</title>
 
   <script>
     if (!sessionStorage.getItem("spotify_access_token")) {
@@ -14,22 +14,22 @@
 
   <style>
     :root {
+      /* Initialfarbe Happy: Jetzt Gelb */
       --emotion-color: #ffcc00;
-      --emotion-bg: rgba(255, 204, 0, 0.4); /* Intensiverer Glow */
-      --bg-dark: #1a1200; /* Dunkles Orange/Braun statt Schwarz */
-      --card-bg: rgba(25, 20, 10, 0.85);
+      --emotion-bg: rgba(255, 204, 0, 0.25);
+      --bg-dark: #050816;
+      --card-bg: rgba(18, 18, 18, 0.9);
       --text-main: #ffffff;
       --text-dim: #b3b3b3;
-
-      /* Sanfte Transformation aller Hintergrundfarben */
-      transition: --emotion-color 1.2s ease-in-out, --emotion-bg 1.2s ease-in-out, --bg-dark 1.2s ease-in-out;
+      /* Übergang für die Transformation der Farben */
+      transition: --emotion-color 1.2s ease-in-out, --emotion-bg 1.2s ease-in-out;
     }
 
     body {
       font-family: 'Inter', system-ui, -apple-system, sans-serif;
       background-color: var(--bg-dark);
-      /* Radialer Verlauf für mehr Helligkeit im Zentrum */
-      background-image: radial-gradient(circle at 50% 30%, var(--emotion-bg) 0%, var(--bg-dark) 100%);
+      /* Intensiverer Hintergrund-Glow mit Morphing */
+      background-image: radial-gradient(circle at 50% -20%, var(--emotion-bg), transparent 75%);
       color: var(--text-main);
       margin: 0;
       height: 100vh;
@@ -38,10 +38,9 @@
       align-items: center;
       justify-content: center;
       overflow: hidden;
-      transition: background 1.2s ease-in-out, background-color 1.2s ease-in-out;
+      transition: background 1.2s ease-in-out;
     }
 
-    /* --- DER REST DES CODES BLEIBT GLEICH --- */
     .home-btn {
       position: fixed;
       top: 2rem;
@@ -79,7 +78,7 @@
       width: 320px;
       height: 240px;
       border-radius: 12px;
-      border: 1px solid rgba(255,255,255,0.1);
+      border: 1px solid #333;
       box-shadow: 0 10px 30px rgba(0,0,0,0.5);
       object-fit: cover;
     }
@@ -88,7 +87,7 @@
       padding: 1.25rem;
       border-radius: 12px;
       width: 320px;
-      border: 1px solid rgba(255,255,255,0.05);
+      border: 1px solid #282828;
       box-sizing: border-box;
     }
 
@@ -98,8 +97,9 @@
       font-weight: bold;
     }
 
+    /* --- GLOW-BALKEN CSS --- */
     .bar-bg {
-      background: rgba(255,255,255,0.1);
+      background: #1a1a1a;
       height: 10px;
       border-radius: 5px;
       overflow: visible;
@@ -113,13 +113,26 @@
       position: relative;
     }
 
-    #bar-happy { background: #ffcc00; box-shadow: 0 0 15px rgba(255, 204, 0, 0.8); }
-    #bar-neutral { background: #f8fafc; box-shadow: 0 0 12px rgba(255, 255, 255, 0.6); }
-    #bar-sad { background: #3b82f6; box-shadow: 0 0 15px rgba(59, 130, 246, 0.8); }
-    #bar-angry { background: #ef4444; box-shadow: 0 0 15px rgba(239, 68, 68, 0.8); }
+    /* Happy Balken: Jetzt Gelb */
+    #bar-happy {
+      background: #ffcc00;
+      box-shadow: 0 0 15px rgba(255, 204, 0, 0.8), 0 0 5px rgba(255, 204, 0, 0.4);
+    }
+    #bar-neutral {
+      background: #f8fafc;
+      box-shadow: 0 0 12px rgba(255, 255, 255, 0.6);
+    }
+    #bar-sad {
+      background: #3b82f6;
+      box-shadow: 0 0 15px rgba(59, 130, 246, 0.8);
+    }
+    #bar-angry {
+      background: #ef4444;
+      box-shadow: 0 0 15px rgba(239, 68, 68, 0.8);
+    }
 
     .main-player { display: flex; flex-direction: column; align-items: center; text-align: center; }
-    #trackImage { width: 300px; height: 300px; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.6); margin-bottom: 1.5rem; }
+    #trackImage { width: 300px; height: 300px; border-radius: 12px; box-shadow: 0 15px 50px rgba(0,0,0,0.7); margin-bottom: 1.5rem; }
     #trackTitle { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.2rem; }
     #trackArtist { color: var(--text-dim); margin-bottom: 1.5rem; }
 
@@ -144,26 +157,26 @@
     <div class="status-line" style="margin-bottom: 10px;">Status: <span class="status-highlight" id="emotion-text">Analysiere...</span></div>
 
     <div class="bar-group">
-      <div class="bar-header" style="display:flex; justify-content:space-between; font-size:10px; text-transform: uppercase;"><span>Happy</span><span id="val-happy">0%</span></div>
+      <div class="bar-header" style="display:flex; justify-content:space-between; font-size:10px; text-transform: uppercase; letter-spacing: 0.5px;"><span>Happy</span><span id="val-happy">0%</span></div>
       <div class="bar-bg"><div id="bar-happy" class="bar-fill"></div></div>
     </div>
     <div class="bar-group" style="margin-top:12px;">
-      <div class="bar-header" style="display:flex; justify-content:space-between; font-size:10px; text-transform: uppercase;"><span>Neutral</span><span id="val-neutral">0%</span></div>
+      <div class="bar-header" style="display:flex; justify-content:space-between; font-size:10px; text-transform: uppercase; letter-spacing: 0.5px;"><span>Neutral</span><span id="val-neutral">0%</span></div>
       <div class="bar-bg"><div id="bar-neutral" class="bar-fill"></div></div>
     </div>
     <div class="bar-group" style="margin-top:12px;">
-      <div class="bar-header" style="display:flex; justify-content:space-between; font-size:10px; text-transform: uppercase;"><span>Sad</span><span id="val-sad">0%</span></div>
+      <div class="bar-header" style="display:flex; justify-content:space-between; font-size:10px; text-transform: uppercase; letter-spacing: 0.5px;"><span>Sad</span><span id="val-sad">0%</span></div>
       <div class="bar-bg"><div id="bar-sad" class="bar-fill"></div></div>
     </div>
     <div class="bar-group" style="margin-top:12px;">
-      <div class="bar-header" style="display:flex; justify-content:space-between; font-size:10px; text-transform: uppercase;"><span>Angry</span><span id="val-angry">0%</span></div>
+      <div class="bar-header" style="display:flex; justify-content:space-between; font-size:10px; text-transform: uppercase; letter-spacing: 0.5px;"><span>Angry</span><span id="val-angry">0%</span></div>
       <div class="bar-bg"><div id="bar-angry" class="bar-fill"></div></div>
     </div>
   </div>
 </div>
 
 <main class="main-player">
-  <img id="trackImage" src="https://via.placeholder.com/300/333/fff?text=Spotify" alt="Cover" />
+  <img id="trackImage" src="https://via.placeholder.com/300/181818/ffffff?text=Spotify" alt="Cover" />
   <div id="trackTitle">Wähle einen Song</div>
   <div id="trackArtist">Künstler</div>
 
@@ -192,18 +205,16 @@
   function setEmotionTheme(emotion) {
     const root = document.documentElement;
     const themes = {
-      // bgDark ist jetzt jeweils eine abgestimmte, dunkle Version der Hauptfarbe
-      happy:   { color: '#ffcc00', bg: 'rgba(255, 204, 0, 0.4)',  bgDark: '#1a1200' },
-      sad:     { color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.35)', bgDark: '#00081a' },
-      neutral: { color: '#ffffff', bg: 'rgba(255, 255, 255, 0.2)',  bgDark: '#0a0a0a' },
-      angry:   { color: '#ef4444', bg: 'rgba(239, 68, 68, 0.35)',  bgDark: '#1a0000' }
+      happy:   { color: '#ffcc00', bg: 'rgba(255, 204, 0, 0.25)' }, // Gelb
+      sad:     { color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.25)' },
+      neutral: { color: '#ffffff', bg: 'rgba(255, 255, 255, 0.15)' },
+      angry:   { color: '#ef4444', bg: 'rgba(239, 68, 68, 0.25)' }
     };
 
     const theme = themes[emotion] || themes.neutral;
 
     root.style.setProperty('--emotion-color', theme.color);
     root.style.setProperty('--emotion-bg', theme.bg);
-    root.style.setProperty('--bg-dark', theme.bgDark);
 
     const textEl = document.getElementById('emotion-text');
     if(textEl) textEl.innerText = emotion.charAt(0).toUpperCase() + emotion.slice(1);
