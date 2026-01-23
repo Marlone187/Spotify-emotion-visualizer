@@ -35,6 +35,33 @@
       overflow: hidden;
     }
 
+    /* --- HOME BUTTON (OBEN LINKS) --- */
+    .home-btn {
+      position: fixed;
+      top: 2rem;
+      left: 2rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 20px;
+      background: var(--card-bg);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 50px;
+      color: white;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+      z-index: 20;
+      backdrop-filter: blur(10px);
+    }
+
+    .home-btn:hover {
+      background: white;
+      color: black;
+      transform: scale(1.05);
+    }
+
     /* --- WEBCAM & STATS (OBEN RECHTS) --- */
     .camera-overlay {
       position: fixed;
@@ -47,7 +74,7 @@
     }
 
     #video-feed {
-      width: 320px; /* Vergrößert */
+      width: 320px;
       height: 240px;
       border-radius: 12px;
       background: #000;
@@ -66,12 +93,10 @@
       box-shadow: 0 8px 24px rgba(0,0,0,0.5);
     }
 
-    /* Status-Texte wie in der Grafik */
     .status-line { font-weight: bold; font-size: 0.9rem; margin-bottom: 4px; }
     .status-highlight { color: var(--spotify-green); }
     .song-summary { font-size: 0.75rem; color: var(--spotify-green); margin-bottom: 1.25rem; line-height: 1.4; }
 
-    /* Balken-Layout */
     .bar-group { margin-bottom: 0.8rem; }
     .bar-header {
       display: flex;
@@ -110,6 +135,10 @@
 </head>
 
 <body>
+
+<a href="start.html" class="home-btn">
+  <span>🏠</span> Home
+</a>
 
 <div class="camera-overlay">
   <video id="video-feed" autoplay muted playsinline></video>
@@ -168,8 +197,6 @@
   <button class="emotion-btn" data-emotion="neutral">N</button>
   <button class="emotion-btn" data-emotion="angry">A</button>
 </div>
-
-<pre id="log" style="display:none"></pre>
 
 <script src="face-api.min.js"></script>
 <script src="camera.js"></script>
