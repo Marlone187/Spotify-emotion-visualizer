@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8" />
-  <title>Spotify Emotion Player | Emotion Stats</title>
+  <title>Spotify Emotion Player | Pro UI</title>
 
   <script>
     if (!sessionStorage.getItem("spotify_access_token")) {
@@ -35,7 +35,7 @@
       overflow: hidden;
     }
 
-    /* --- WEBCAM & STATS OBEN RECHTS --- */
+    /* --- WEBCAM & STATS (OBEN RECHTS) --- */
     .camera-overlay {
       position: fixed;
       top: 1.5rem;
@@ -47,7 +47,7 @@
     }
 
     #video-feed {
-      width: 320px; /* Schön groß */
+      width: 320px; /* Vergrößert */
       height: 240px;
       border-radius: 12px;
       background: #000;
@@ -56,7 +56,7 @@
       object-fit: cover;
     }
 
-    .emotion-stats-card {
+    .emotion-stats {
       background: var(--card-bg);
       padding: 1.25rem;
       border-radius: 12px;
@@ -66,100 +66,46 @@
       box-shadow: 0 8px 24px rgba(0,0,0,0.5);
     }
 
-    .status-line {
-      font-weight: bold;
-      font-size: 0.9rem;
-      margin-bottom: 4px;
-    }
-    .status-current { color: var(--spotify-green); }
+    /* Status-Texte wie in der Grafik */
+    .status-line { font-weight: bold; font-size: 0.9rem; margin-bottom: 4px; }
+    .status-highlight { color: var(--spotify-green); }
+    .song-summary { font-size: 0.75rem; color: var(--spotify-green); margin-bottom: 1.25rem; line-height: 1.4; }
 
-    .song-summary {
-      font-size: 0.75rem;
-      color: var(--spotify-green);
-      margin-bottom: 1.25rem;
-      line-height: 1.4;
-    }
-
-    .bar-group {
-      margin-bottom: 0.8rem;
-    }
-
+    /* Balken-Layout */
+    .bar-group { margin-bottom: 0.8rem; }
     .bar-header {
       display: flex;
       justify-content: space-between;
-      align-items: center;
       font-size: 0.7rem;
       font-weight: 800;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
       margin-bottom: 4px;
-      color: #eee;
     }
 
-    .bar-bg {
-      background: #282828;
-      height: 8px;
-      border-radius: 4px;
-      overflow: hidden;
-    }
+    .bar-bg { background: #282828; height: 8px; border-radius: 4px; overflow: hidden; }
+    .bar-fill { height: 100%; width: 0%; transition: width 0.5s ease; }
 
-    .bar-fill {
-      height: 100%;
-      width: 0%; /* Wird via JS gesetzt */
-      transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    /* --- PLAYER MITTE --- */
-    .main-player {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-    }
-
-    #trackImage {
-      width: 300px;
-      height: 300px;
-      border-radius: 12px;
-      box-shadow: 0 15px 50px rgba(0,0,0,0.7);
-      margin-bottom: 1.5rem;
-      background: #181818;
-    }
-
+    /* --- PLAYER (MITTE) --- */
+    .main-player { display: flex; flex-direction: column; align-items: center; text-align: center; }
+    #trackImage { width: 300px; height: 300px; border-radius: 12px; box-shadow: 0 15px 50px rgba(0,0,0,0.7); margin-bottom: 1.5rem; background: #181818; }
     #trackTitle { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.2rem; }
     #trackArtist { color: var(--text-dim); margin-bottom: 1.5rem; }
 
     .player-controls { width: 350px; }
-    .buttons-row {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 1.5rem;
-      margin-top: 1rem;
-    }
+    .progress-container { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    #progressBar { flex: 1; accent-color: var(--spotify-green); }
+    .time-label { font-size: 0.75rem; color: var(--text-dim); min-width: 35px; }
 
-    .btn-circle {
-      background: none; border: none; color: white; cursor: pointer; font-size: 1.5rem;
-    }
-    #startBtn {
-      background: white; color: black; width: 50px; height: 50px; border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-    }
+    .buttons-row { display: flex; justify-content: center; align-items: center; gap: 1.5rem; }
+    .btn-circle { background: none; border: none; color: white; cursor: pointer; font-size: 1.5rem; transition: transform 0.2s; }
+    .btn-circle:hover { transform: scale(1.1); }
+    #startBtn { background: white; color: black; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
 
-    #progressBar { width: 100%; accent-color: var(--spotify-green); }
-    .time-row { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-dim); }
-
-    /* --- VOLUME UNTEN LINKS --- */
-    .volume-box {
-      position: fixed; bottom: 2rem; left: 2rem;
-      display: flex; align-items: center; gap: 10px;
-      background: rgba(0,0,0,0.6); padding: 8px 16px; border-radius: 20px;
-    }
+    /* --- LAUTSTÄRKE (LINKS) --- */
+    .volume-control { position: fixed; bottom: 2rem; left: 2rem; display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.6); padding: 8px 16px; border-radius: 20px; }
     #volumeSlider { accent-color: white; width: 80px; }
 
-    /* TEST BUTTONS */
-    .test-area { position: fixed; bottom: 1rem; right: 1rem; opacity: 0.3; }
-    .test-area:hover { opacity: 1; }
+    .test-panel { position: fixed; bottom: 1rem; right: 1rem; opacity: 0.3; }
   </style>
 </head>
 
@@ -168,32 +114,24 @@
 <div class="camera-overlay">
   <video id="video-feed" autoplay muted playsinline></video>
 
-  <div class="emotion-stats-card">
-    <div class="status-line">
-      Status: <span class="status-current" id="current-status-text">Momentan: Glücklich (0%)</span>
-    </div>
-
-    <div class="song-summary" id="song-summary-text">
-      Song bisher: 😊 Happy 0% | 😐 Neutral 0% | 😢 Sad 0% | 😡 Angry 0%
-    </div>
+  <div class="emotion-stats">
+    <div class="status-line">Status: <span class="status-highlight" id="emotion-text">Momentan: Warte... (0%)</span></div>
+    <div class="song-summary" id="song-summary">Song bisher: 😊 Happy 0% | 😐 Neutral 0% | 😢 Sad 0% | 😡 Angry 0%</div>
 
     <div class="bar-group">
-      <div class="bar-header"><span>Happy</span><span id="pct-happy">0%</span></div>
+      <div class="bar-header"><span>Happy</span><span id="val-happy">0%</span></div>
       <div class="bar-bg"><div id="bar-happy" class="bar-fill" style="background: #22c55e;"></div></div>
     </div>
-
     <div class="bar-group">
-      <div class="bar-header"><span>Neutral</span><span id="pct-neutral">0%</span></div>
+      <div class="bar-header"><span>Neutral</span><span id="val-neutral">0%</span></div>
       <div class="bar-bg"><div id="bar-neutral" class="bar-fill" style="background: #ffffff;"></div></div>
     </div>
-
     <div class="bar-group">
-      <div class="bar-header"><span>Sad</span><span id="pct-sad">0%</span></div>
+      <div class="bar-header"><span>Sad</span><span id="val-sad">0%</span></div>
       <div class="bar-bg"><div id="bar-sad" class="bar-fill" style="background: #3b82f6;"></div></div>
     </div>
-
     <div class="bar-group">
-      <div class="bar-header"><span>Angry</span><span id="pct-angry">0%</span></div>
+      <div class="bar-header"><span>Angry</span><span id="val-angry">0%</span></div>
       <div class="bar-bg"><div id="bar-angry" class="bar-fill" style="background: #ef4444;"></div></div>
     </div>
   </div>
@@ -201,16 +139,15 @@
 
 <main class="main-player">
   <img id="trackImage" src="https://via.placeholder.com/300/181818/ffffff?text=..." alt="Cover" />
-  <div id="trackTitle">Titel lädt...</div>
-  <div id="trackArtist">Künstler</div>
+  <div id="trackTitle">–</div>
+  <div id="trackArtist">–</div>
 
   <div class="player-controls">
-    <input type="range" id="progressBar" min="0" max="100" value="0" disabled />
-    <div class="time-row">
-      <span id="currentTime">0:00</span>
-      <span id="durationTime">0:00</span>
+    <div class="progress-container">
+      <span id="currentTime" class="time-label">0:00</span>
+      <input type="range" id="progressBar" min="0" max="0" value="0" disabled />
+      <span id="durationTime" class="time-label">0:00</span>
     </div>
-
     <div class="buttons-row">
       <button id="prevBtn" class="btn-circle" disabled>⏮</button>
       <button id="startBtn" class="btn-circle" disabled>▶</button>
@@ -219,16 +156,16 @@
   </div>
 </main>
 
-<div class="volume-box">
+<div class="volume-control">
   <span>🔊</span>
   <input type="range" id="volumeSlider" min="0" max="100" value="50" disabled />
-  <span id="volumeValue">50%</span>
+  <span id="volumeValue" style="font-size: 0.8rem; min-width: 35px;">50%</span>
 </div>
 
-<div class="test-area">
+<div class="test-panel">
   <button class="emotion-btn" data-emotion="happy">H</button>
-  <button class="emotion-btn" data-emotion="neutral">N</button>
   <button class="emotion-btn" data-emotion="sad">S</button>
+  <button class="emotion-btn" data-emotion="neutral">N</button>
   <button class="emotion-btn" data-emotion="angry">A</button>
 </div>
 
