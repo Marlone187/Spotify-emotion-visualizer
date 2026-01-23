@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8" />
-  <title>Spotify Emotion Player | Pro UI v2</title>
+  <title>Spotify Emotion Player | Pro UI</title>
 
   <script>
     if (!sessionStorage.getItem("spotify_access_token")) {
@@ -15,17 +15,16 @@
   <style>
     :root {
       --spotify-green: #1db954;
-      --bg-dark: #090909;
-      --card-bg: rgba(255, 255, 255, 0.05);
+      --bg-dark: #050816;
+      --card-bg: rgba(18, 18, 18, 0.9);
       --text-main: #ffffff;
       --text-dim: #b3b3b3;
-      --accent-blue: #3b82f6;
     }
 
     body {
       font-family: 'Inter', system-ui, -apple-system, sans-serif;
       background-color: var(--bg-dark);
-      background-image: radial-gradient(circle at 50% -20%, #1db95433, transparent);
+      background-image: radial-gradient(circle at 50% -20%, #1db95420, transparent);
       color: var(--text-main);
       margin: 0;
       height: 100vh;
@@ -36,251 +35,110 @@
       overflow: hidden;
     }
 
-    /* --- LAYOUT BOXEN --- */
-
-    /* Webcam oben rechts */
+    /* --- WEBCAM & STATS (OBEN RECHTS) --- */
     .camera-overlay {
       position: fixed;
-      top: 2rem;
-      right: 2rem;
+      top: 1.5rem;
+      right: 1.5rem;
       display: flex;
       flex-direction: column;
-      align-items: flex-end;
       gap: 1rem;
       z-index: 10;
     }
 
     #video-feed {
-      /* 1. Änderung: Größe angepasst (größer) */
-      width: 280px;
-      height: 210px;
+      width: 320px; /* Vergrößert */
+      height: 240px;
       border-radius: 12px;
       background: #000;
-      border: 2px solid var(--card-bg);
+      border: 1px solid #333;
       box-shadow: 0 10px 30px rgba(0,0,0,0.5);
       object-fit: cover;
     }
 
-    /* Emotions-Balken unter der Kamera */
     .emotion-stats {
       background: var(--card-bg);
-      padding: 1rem;
+      padding: 1.25rem;
       border-radius: 12px;
-      backdrop-filter: blur(10px);
-      /* 1. Änderung: Breite angepasst an Video */
-      width: 280px;
-      border: 1px solid rgba(255,255,255,0.1);
-      box-sizing: border-box;
-    }
-
-    .emotion-bar-container {
-      margin-bottom: 0.5rem;
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-
-    .bar-bg {
-      background: rgba(255,255,255,0.1);
-      height: 6px;
-      border-radius: 3px;
-      margin-top: 4px;
-      overflow: hidden;
-    }
-
-    .bar-fill {
-      height: 100%;
-      width: 0%; /* Wird via JS gesteuert */
-      transition: width 0.3s ease;
-    }
-
-    /* Zentrale Player Einheit */
-    .main-player {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-      max-width: 400px;
-      width: 100%;
-    }
-
-    #trackImage {
       width: 320px;
-      height: 320px;
-      border-radius: 20px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.8);
-      margin-bottom: 2rem;
-      transition: transform 0.3s ease;
-      background: #181818;
+      border: 1px solid #282828;
+      box-sizing: border-box;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
     }
 
-    #trackImage:hover {
-      transform: scale(1.02);
-    }
+    /* Status-Texte wie in der Grafik */
+    .status-line { font-weight: bold; font-size: 0.9rem; margin-bottom: 4px; }
+    .status-highlight { color: var(--spotify-green); }
+    .song-summary { font-size: 0.75rem; color: var(--spotify-green); margin-bottom: 1.25rem; line-height: 1.4; }
 
-    #trackTitle {
-      font-size: 1.75rem;
+    /* Balken-Layout */
+    .bar-group { margin-bottom: 0.8rem; }
+    .bar-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.7rem;
       font-weight: 800;
-      margin-bottom: 0.25rem;
+      text-transform: uppercase;
+      margin-bottom: 4px;
     }
 
-    #trackArtist {
-      font-size: 1.1rem;
-      color: var(--text-dim);
-      margin-bottom: 2rem;
-    }
+    .bar-bg { background: #282828; height: 8px; border-radius: 4px; overflow: hidden; }
+    .bar-fill { height: 100%; width: 0%; transition: width 0.5s ease; }
 
-    /* Controls & Timeline */
-    .player-controls {
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-    }
+    /* --- PLAYER (MITTE) --- */
+    .main-player { display: flex; flex-direction: column; align-items: center; text-align: center; }
+    #trackImage { width: 300px; height: 300px; border-radius: 12px; box-shadow: 0 15px 50px rgba(0,0,0,0.7); margin-bottom: 1.5rem; background: #181818; }
+    #trackTitle { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.2rem; }
+    #trackArtist { color: var(--text-dim); margin-bottom: 1.5rem; }
 
-    .buttons-row {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 1.5rem;
-    }
+    .player-controls { width: 350px; }
+    .progress-container { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    #progressBar { flex: 1; accent-color: var(--spotify-green); }
+    .time-label { font-size: 0.75rem; color: var(--text-dim); min-width: 35px; }
 
-    .btn-circle {
-      background: transparent;
-      color: white;
-      border: none;
-      font-size: 1.5rem;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
+    .buttons-row { display: flex; justify-content: center; align-items: center; gap: 1.5rem; }
+    .btn-circle { background: none; border: none; color: white; cursor: pointer; font-size: 1.5rem; transition: transform 0.2s; }
+    .btn-circle:hover { transform: scale(1.1); }
+    #startBtn { background: white; color: black; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
 
-    .btn-circle:hover:not(:disabled) {
-      transform: scale(1.1);
-      color: var(--spotify-green);
-    }
+    /* --- LAUTSTÄRKE (LINKS) --- */
+    .volume-control { position: fixed; bottom: 2rem; left: 2rem; display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.6); padding: 8px 16px; border-radius: 20px; }
+    #volumeSlider { accent-color: white; width: 80px; }
 
-    #startBtn {
-      width: 60px;
-      height: 60px;
-      background: white;
-      color: black;
-      border-radius: 50%;
-      font-size: 1.2rem;
-    }
-
-    #startBtn:hover {
-      transform: scale(1.05);
-      background: var(--spotify-green);
-      color: white;
-    }
-
-    /* Progress Bar */
-    .progress-container {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      width: 100%;
-    }
-
-    #progressBar {
-      flex: 1;
-      accent-color: var(--spotify-green);
-      cursor: pointer;
-    }
-
-    .time-label {
-      font-size: 0.75rem;
-      color: var(--text-dim);
-      min-width: 35px;
-    }
-
-    /* Lautstärke unten links */
-    .volume-control {
-      position: fixed;
-      bottom: 2rem;
-      left: 2rem;
-      background: var(--card-bg);
-      padding: 0.75rem 1.25rem;
-      border-radius: 50px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255,255,255,0.1);
-    }
-
-    #volumeSlider {
-      accent-color: white;
-      width: 100px;
-    }
-
-    /* Test Buttons unten mittig */
-    .test-panel {
-      position: fixed;
-      bottom: 2rem;
-      display: flex;
-      gap: 0.5rem;
-      opacity: 0.5;
-      transition: opacity 0.3s;
-    }
-
-    .test-panel:hover { opacity: 1; }
-
-    .emotion-btn {
-      background: #333;
-      font-size: 0.8rem;
-      padding: 0.4rem 0.8rem;
-    }
-
-    /* Log Panel versteckt oder dezent */
-    #log {
-      position: fixed;
-      bottom: 0;
-      right: 0;
-      max-width: 200px;
-      font-size: 10px;
-      opacity: 0.3;
-      background: none;
-    }
-
+    .test-panel { position: fixed; bottom: 1rem; right: 1rem; opacity: 0.3; }
   </style>
 </head>
 
 <body>
 
 <div class="camera-overlay">
-  <video id="video-feed" width="320" height="240" autoplay muted playsinline></video>
+  <video id="video-feed" autoplay muted playsinline></video>
 
   <div class="emotion-stats">
-    <div style="font-size: 0.8rem; margin-bottom: 10px; font-weight: bold;">Status: <span id="emotion-text" style="color:var(--spotify-green)">Warte...</span></div>
+    <div class="status-line">Status: <span class="status-highlight" id="emotion-text">Momentan: Warte... (0%)</span></div>
+    <div class="song-summary" id="song-summary">Song bisher: 😊 Happy 0% | 😐 Neutral 0% | 😢 Sad 0% | 😡 Angry 0%</div>
 
-    <div class="emotion-bar-container">
-      Happy
-      <div class="bar-bg"><div id="bar-happy" class="bar-fill" style="background: #22c55e; width: 0%"></div></div>
+    <div class="bar-group">
+      <div class="bar-header"><span>Happy</span><span id="val-happy">0%</span></div>
+      <div class="bar-bg"><div id="bar-happy" class="bar-fill" style="background: #22c55e;"></div></div>
     </div>
-
-    <div class="emotion-bar-container">
-      Neutral
-      <div class="bar-bg"><div id="bar-neutral" class="bar-fill" style="background: #ffffff; width: 0%"></div></div>
+    <div class="bar-group">
+      <div class="bar-header"><span>Neutral</span><span id="val-neutral">0%</span></div>
+      <div class="bar-bg"><div id="bar-neutral" class="bar-fill" style="background: #ffffff;"></div></div>
     </div>
-
-    <div class="emotion-bar-container">
-      Sad
-      <div class="bar-bg"><div id="bar-sad" class="bar-fill" style="background: #3b82f6; width: 0%"></div></div>
+    <div class="bar-group">
+      <div class="bar-header"><span>Sad</span><span id="val-sad">0%</span></div>
+      <div class="bar-bg"><div id="bar-sad" class="bar-fill" style="background: #3b82f6;"></div></div>
     </div>
-    <div class="emotion-bar-container">
-      Angry
-      <div class="bar-bg"><div id="bar-angry" class="bar-fill" style="background: #ef4444; width: 0%"></div></div>
+    <div class="bar-group">
+      <div class="bar-header"><span>Angry</span><span id="val-angry">0%</span></div>
+      <div class="bar-bg"><div id="bar-angry" class="bar-fill" style="background: #ef4444;"></div></div>
     </div>
   </div>
 </div>
 
 <main class="main-player">
-  <img id="trackImage" src="https://via.placeholder.com/320/181818/ffffff?text=Warten+auf+Spotify" alt="Cover" />
-
+  <img id="trackImage" src="https://via.placeholder.com/300/181818/ffffff?text=..." alt="Cover" />
   <div id="trackTitle">–</div>
   <div id="trackArtist">–</div>
 
@@ -290,7 +148,6 @@
       <input type="range" id="progressBar" min="0" max="0" value="0" disabled />
       <span id="durationTime" class="time-label">0:00</span>
     </div>
-
     <div class="buttons-row">
       <button id="prevBtn" class="btn-circle" disabled>⏮</button>
       <button id="startBtn" class="btn-circle" disabled>▶</button>
@@ -306,13 +163,13 @@
 </div>
 
 <div class="test-panel">
-  <button class="emotion-btn" data-emotion="happy">Test Happy</button>
-  <button class="emotion-btn" data-emotion="sad">Test Sad</button>
-  <button class="emotion-btn" data-emotion="neutral">Test Neutral</button>
-  <button class="emotion-btn" data-emotion="angry">Test Angry</button>
+  <button class="emotion-btn" data-emotion="happy">H</button>
+  <button class="emotion-btn" data-emotion="sad">S</button>
+  <button class="emotion-btn" data-emotion="neutral">N</button>
+  <button class="emotion-btn" data-emotion="angry">A</button>
 </div>
 
-<pre id="log"></pre>
+<pre id="log" style="display:none"></pre>
 
 <script src="face-api.min.js"></script>
 <script src="camera.js"></script>
