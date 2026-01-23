@@ -1,195 +1,320 @@
 <!doctype html>
 <html lang="de">
 <head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spotify Emotion Player | Premium Experience</title>
+
   <script>
     const token = sessionStorage.getItem("spotify_access_token");
     const mode = sessionStorage.getItem("selected_mode");
-
-    // Wenn nicht eingeloggt → Login-Seite
-    if (!token) {
-      window.location = "auth.html";
-    }
-
-    // Wenn eingeloggt, aber Modus nicht "auto" → Auswahlseite
-    if (token && mode !== "auto") {
-      window.location = "start.html";
-    }
-  </script>
-
-  <meta charset="utf-8" />
-  <title>Spotify Emotion Player</title>
-
-  <script>
-    // Wenn kein Access Token vorhanden → erst zur Auth-Seite
-    if (!sessionStorage.getItem("spotify_access_token")) {
-      window.location = "auth.html";
-    }
+    if (!token) window.location = "auth.html";
+    if (token && mode !== "auto") window.location = "start.html";
   </script>
 
   <script src="https://sdk.scdn.co/spotify-player.js"></script>
 
   <style>
+    /* Emotion Variables System */
+    :root {
+      --bg-color: #0b0e14;
+      --accent-color: #3b82f6;
+      --text-main: #ffffff;
+      --text-dim: rgba(255, 255, 255, 0.6);
+      --glass-bg: rgba(255, 255, 255, 0.05);
+      --glass-border: rgba(255, 255, 255, 0.1);
+      --glow-opacity: 0.2;
+      --canvas-skew: 0deg;
+      --transition-speed: 1.5s;
+    }
+
+    body.mood-happy {
+      --bg-color: #1a1a05;
+      --accent-color: #fbbf24;
+      --glow-opacity: 0.5;
+    }
+
+    body.mood-sad {
+      --bg-color: #020617;
+      --accent-color: #60a5fa;
+      --glass-bg: rgba(0, 0, 0, 0.3);
+      --glow-opacity: 0.1;
+    }
+
+    body.mood-angry {
+      --bg-color: #1a0505;
+      --accent-color: #ef4444;
+      --canvas-skew: -1deg;
+      --glow-opacity: 0.4;
+    }
+
+    body.mood-neutral {
+      --bg-color: #0f172a;
+      --accent-color: #94a3b8;
+      --glow-opacity: 0.2;
+    }
+
+    /* Base Setup */
+    * { box-sizing: border-box; transition: all var(--transition-speed) ease-in-out; }
+
     body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #050816;
-      color: #e5e7eb;
-      padding: 1.5rem;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
     }
-    h1 {
-      margin-bottom: .5rem;
+
+    /* Ambient Background Glow */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 50%; left: 50%;
+      width: 60vw; height: 60vw;
+      background: radial-gradient(circle, var(--accent-color) 0%, transparent 70%);
+      transform: translate(-50%, -50%);
+      filter: blur(100px);
+      opacity: var(--glow-opacity);
+      z-index: -1;
     }
-    button {
-      padding: .5rem 1rem;
-      margin: .25rem;
-      border-radius: .5rem;
-      border: none;
+
+    /* Top Navigation */
+    .top-nav {
+      position: absolute;
+      top: 2rem;
+      left: 2rem;
+      z-index: 100;
+    }
+
+    .btn-back {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border-radius: 2rem;
+      text-decoration: none;
+      backdrop-filter: blur(10px);
+      font-size: 0.9rem;
       cursor: pointer;
-      font-weight: 600;
     }
-    #startBtn { background: #3b82f6; color:#e5e7eb; }
-    #prevBtn  { background: #0f172a; color:#e5e7eb; }
-    #nextBtn  { background: #0f172a; color:#e5e7eb; }
-    .emotion-btn { background:#334155; color:#e5e7eb; }
-    .emotion-btn:hover { background:#475569; }
 
-    /* Spotify Now Playing */
-    .now-playing {
-      margin-top: 1.5rem;
+    /* Camera Section (Top Right) */
+    #camera-section {
+      position: absolute;
+      top: 2rem;
+      right: 2rem;
       display: flex;
+      flex-direction: column;
+      align-items: flex-end;
       gap: 1rem;
-      align-items: center;
-      background: #020617;
-      padding: .75rem;
-      border-radius: .75rem;
-    }
-    .now-playing img {
-      width: 72px;
-      height: 72px;
-      border-radius: .5rem;
-      object-fit: cover;
-      background: #0f172a;
     }
 
-    .progress-row {
+    #video-feed {
+      width: 160px;
+      height: 120px;
+      object-fit: cover;
+      border-radius: 1rem;
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    /* Emotion Bars */
+    .emotion-bars-container {
+      width: 160px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .emotion-bar-wrapper {
+      height: 6px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .emotion-bar-fill {
+      height: 100%;
+      width: 0%; /* Dynamic update via JS */
+      transition: width 0.5s ease;
+    }
+    #bar-happy { background: #fbbf24; }
+    #bar-sad { background: #60a5fa; }
+    #bar-angry { background: #ef4444; }
+    #bar-neutral { background: #94a3b8; }
+
+    /* Main Player Central */
+    .main-player {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      transform: skew(var(--canvas-skew));
+      max-width: 90vw;
+    }
+
+    #trackImage {
+      width: 380px;
+      height: 380px;
+      border-radius: 1.5rem;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+      margin-bottom: 2.5rem;
+      border: 1px solid var(--glass-border);
+      object-fit: cover;
+    }
+
+    #trackTitle {
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.02em;
+    }
+
+    #trackArtist {
+      font-size: 1.2rem;
+      color: var(--text-dim);
+      margin-bottom: 2rem;
+    }
+
+    /* Controls */
+    .player-controls {
+      display: flex;
+      gap: 2rem;
+      align-items: center;
+    }
+
+    .ctrl-btn {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 2rem;
+      cursor: pointer;
+      opacity: 0.8;
+    }
+    .ctrl-btn:hover { opacity: 1; transform: scale(1.1); }
+    .ctrl-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+
+    #startBtn {
+      width: 70px;
+      height: 70px;
+      background: white;
+      color: black;
+      border-radius: 50%;
       display: flex;
       align-items: center;
-      gap: .5rem;
-      font-size: .75rem;
-      color: #9ca3af;
+      justify-content: center;
     }
 
-    #progressBar {
-      flex: 1;
-      height: 4px;
-      border-radius: 999px;
-      background: #1f2937;
-    }
-    #progressBar::-webkit-slider-thumb {
-      width: 12px;
-      height: 12px;
-      border-radius: 999px;
-      background: #22c55e;
-    }
-
-    /* Lautstärke */
+    /* Volume Fixed Bottom Right */
     .volume-float {
       position: fixed;
-      right: 1rem;
-      bottom: 1rem;
-      background: rgba(15, 23, 42, 0.95);
-      border-radius: 999px;
-      padding: .35rem .6rem;
+      bottom: 2.5rem;
+      right: 2.5rem;
+      background: var(--glass-bg);
+      backdrop-filter: blur(15px);
+      padding: 1rem 1.5rem;
+      border-radius: 3rem;
+      border: 1px solid var(--glass-border);
       display: flex;
       align-items: center;
-      gap: .35rem;
-      box-shadow: 0 10px 30px rgba(0,0,0,.4);
-      font-size: .75rem;
-    }
-
-    /* Kamera-UI */
-    #camera-section {
-      margin-top: 2rem;
-      display: flex;
       gap: 1rem;
-      align-items: flex-start;
-    }
-    #video-feed {
-      border-radius: .5rem;
-      background: #020617;
-      border: 1px solid #1f2937;
     }
 
-    pre {
-      margin-top: 1.5rem;
-      padding: .75rem;
-      background: #020617;
-      border-radius: .5rem;
-      max-height: 220px;
-      overflow-y: auto;
-      white-space: pre-wrap;
-      font-size: .85rem;
+    input[type="range"] {
+      accent-color: var(--accent-color);
+      cursor: pointer;
+    }
+
+    /* Hidden Utility */
+    #log, .emotion-manuell, #emotion-text { display: none; }
+
+    @media (max-width: 600px) {
+      #trackImage { width: 280px; height: 280px; }
+      #trackTitle { font-size: 1.5rem; }
     }
   </style>
 </head>
 
-<body>
+<body class="mood-neutral">
 
-<h1>Spotify Emotion Player</h1>
+<nav class="top-nav">
+  <button onclick="window.location='start.html'" class="btn-back">← Zurück</button>
+</nav>
 
-<button id="prevBtn" disabled>⏮</button>
-<button id="startBtn" disabled>▶️</button>
-<button id="nextBtn" disabled>⏭</button>
-
-<!-- Now Playing -->
-<div class="now-playing">
-  <img id="trackImage" src="" alt="Cover" />
-  <div class="now-playing-info">
-    <div id="trackTitle" class="track-title">–</div>
-    <div id="trackArtist" class="track-artist">–</div>
-
-    <div class="progress-row">
-      <span id="currentTime">0:00</span>
-      <input type="range" id="progressBar" min="0" max="0" value="0" disabled />
-      <span id="durationTime">0:00</span>
-    </div>
+<section id="camera-section">
+  <video id="video-feed" autoplay muted playsinline></video>
+  <div class="emotion-bars-container">
+    <div class="emotion-bar-wrapper"><div id="bar-happy" class="emotion-bar-fill"></div></div>
+    <div class="emotion-bar-wrapper"><div id="bar-sad" class="emotion-bar-fill"></div></div>
+    <div class="emotion-bar-wrapper"><div id="bar-angry" class="emotion-bar-fill"></div></div>
+    <div class="emotion-bar-wrapper"><div id="bar-neutral" class="emotion-bar-fill"></div></div>
   </div>
+  <span id="emotion-text"></span> </section>
+
+<main class="main-player">
+  <img id="trackImage" src="https://via.placeholder.com/400" alt="Album Cover" />
+
+  <div id="trackTitle">–</div>
+  <div id="trackArtist">–</div>
+
+  <div class="player-controls">
+    <button id="prevBtn" class="ctrl-btn" disabled>⏮</button>
+    <button id="startBtn" class="ctrl-btn" disabled>▶</button>
+    <button id="nextBtn" class="ctrl-btn" disabled>⏭</button>
+  </div>
+</main>
+
+<div style="width: 100%; max-width: 500px; margin-top: 2rem; display: flex; align-items: center; gap: 10px;">
+  <span id="currentTime" style="font-size: 0.8rem; color: var(--text-dim);">0:00</span>
+  <input type="range" id="progressBar" style="flex: 1;" min="0" max="0" value="0" disabled />
+  <span id="durationTime" style="font-size: 0.8rem; color: var(--text-dim);">0:00</span>
 </div>
 
-<!-- Lautstärke -->
 <div class="volume-float">
-  <span>🔊</span>
+  <span>󰕾</span>
   <input type="range" id="volumeSlider" min="0" max="100" value="50" disabled />
   <span id="volumeValue">50%</span>
 </div>
 
-<h2>Emotion (manuell)</h2>
-<button class="emotion-btn" data-emotion="happy">Happy</button>
-<button class="emotion-btn" data-emotion="sad">Sad</button>
-<button class="emotion-btn" data-emotion="neutral">Neutral</button>
-<button class="emotion-btn" data-emotion="angry">Angry</button>
-
-<!-- Kamera-Emotionserkennung -->
-<h2>Emotionserkennung mit Kamera</h2>
-
-<div id="camera-section">
-  <video id="video-feed" width="320" height="240" autoplay muted playsinline></video>
-
-  <div id="emotion-container">
-    Aktuelle Emotion:<br>
-    <span id="emotion-text" style="font-weight:600;">Noch keine Daten…</span>
-  </div>
+<div class="emotion-manuell">
+  <button class="emotion-btn" data-emotion="happy">Happy</button>
+  <button class="emotion-btn" data-emotion="sad">Sad</button>
+  <button class="emotion-btn" data-emotion="neutral">Neutral</button>
+  <button class="emotion-btn" data-emotion="angry">Angry</button>
 </div>
-
 <pre id="log"></pre>
 
-<!-- face-api -->
 <script src="face-api.min.js"></script>
-
-<!-- Kamera-Emotionserkennung -->
 <script src="camera.js"></script>
-
-<!-- Spotify Player Logik -->
 <script type="module" src="app.js"></script>
 
+<script>
+  /**
+   * Helper Script to link the legacy app.js logic to the new UI bars
+   * This observes changes in the emotion-text (or global state)
+   */
+  const updateUIBars = (emotions) => {
+    if (!emotions) return;
+    document.getElementById('bar-happy').style.width = (emotions.happy * 100) + '%';
+    document.getElementById('bar-sad').style.width = (emotions.sad * 100) + '%';
+    document.getElementById('bar-angry').style.width = (emotions.angry * 100) + '%';
+    document.getElementById('bar-neutral').style.width = (emotions.neutral * 100) + '%';
+  };
+
+  // Example of MutationObserver to catch when app.js updates the emotion-text
+  const targetNode = document.getElementById('emotion-text');
+  const observer = new MutationObserver((mutations) => {
+    const mood = targetNode.innerText.toLowerCase();
+    if (mood.includes('happy')) document.body.className = 'mood-happy';
+    else if (mood.includes('sad')) document.body.className = 'mood-sad';
+    else if (mood.includes('angry')) document.body.className = 'mood-angry';
+    else if (mood.includes('neutral')) document.body.className = 'mood-neutral';
+  });
+  observer.observe(targetNode, { childList: true, characterData: true, subtree: true });
+</script>
 </body>
 </html>
