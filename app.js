@@ -63,7 +63,7 @@ let playerReady = false;
 let preEndHandledTrackId = null;
 let isSwitchingPlaylist = false;
 
-// ✅ Audio-Transition Lock (verhindert Race Conditions)
+// ✅ NEW: Audio-Transition Lock (verhindert “1s Stille” bei Next nach Emotion-Switch)
 let isAudioTransition = false;
 let queuedNext = false;
 
@@ -176,13 +176,13 @@ async function transferPlaybackToWebSDKDevice() {
 
         if (res.status === 204) {
             log("✅ Transfer Playback OK (204).");
-            await new Promise((r) => setTimeout(r, 180));
+            await new Promise((r) => setTimeout(r, 300));
             return true;
         }
 
         const text = await res.text();
         log("⚠️ Transfer Playback Antwort:", res.status, text);
-        await new Promise((r) => setTimeout(r, 180));
+        await new Promise((r) => setTimeout(r, 300));
         return res.ok;
     } catch (e) {
         log("❌ Transfer Playback Error:", e);
@@ -220,7 +220,7 @@ async function debugPlayerState(label = "DEBUG") {
 }
 
 // ===============================
-// ✅ Wake-up (kein play mehr)
+// ✅ Wake-up (FIXED: kein play mehr)
 // ===============================
 async function wakeUpPlayback() {
     try {
@@ -229,26 +229,25 @@ async function wakeUpPlayback() {
             headers: { Authorization: "Bearer " + accessToken },
         });
     } catch {}
-    await new Promise((r) => setTimeout(r, 60));
+
+    await new Promise((r) => setTimeout(r, 80));
 }
 
 // ===============================
-// ✅ CLEAN SWITCH (FAST + FAILSAFE)
+// ✅ CLEAN SWITCH (Hard-Mute + Lock + Queue Next)
 // ===============================
-
-// Snappy Defaults (kürzer)
-const TRANSITION = {
-    muteSettleMs: 60,
-    postPlaySettleMs: 120,
-    fadeInMs: 180,
-    fadeSteps: 8,
-    fetchTimeoutMs: 2500,
-    safetyUnlockMs: 4000,
-};
-
-function setControlsDisabled(disabled) {
-    if (prevBtn) prevBtn.disabled = disabled;
-    if (nextBtn) nextBtn.disabled = disabled;
+async function setDeviceVolumePercent(percent) {
+    if (!deviceId || !accessToken) return;
+    const p = Math.max(0, Math.min(100, Math.round(percent)));
+    try {
+        await fetch(
+            `https://api.spotify.com/v1/me/player/volume?volume_percent=${p}&device_id=${deviceId}`,
+            {
+                method: "PUT",
+                headers: { Authorization: "Bearer " + accessToken },
+            }
+        );
+    } catch {}
 }
 
 function getUiVolumePercentFallback() {
@@ -262,26 +261,15 @@ async function setSdkVolumePercent(percent) {
     try { await player.setVolume(p / 100); } catch {}
 }
 
-async function setDeviceVolumePercent(percent) {
-    if (!deviceId || !accessToken) return;
-    const p = Math.max(0, Math.min(100, Math.round(percent)));
-    try {
-        await fetch(
-            `https://api.spotify.com/v1/me/player/volume?volume_percent=${p}&device_id=${deviceId}`,
-            { method: "PUT", headers: { Authorization: "Bearer " + accessToken } }
-        );
-    } catch {}
-}
-
-async function fadeToVolumePercent(toPercent, ms = TRANSITION.fadeInMs, steps = TRANSITION.fadeSteps) {
-    const from = 0;
-    const to = Math.max(0, Math.min(100, Number(toPercent)));
+async function fadeDeviceVolume(from, to, ms = 300, steps = 12) {
+    const a = Math.max(0, Math.min(100, Number(from)));
+    const b = Math.max(0, Math.min(100, Number(to)));
     const stepMs = Math.max(10, Math.floor(ms / steps));
 
     for (let i = 1; i <= steps; i++) {
-        const v = from + ((to - from) * i) / steps;
+        const v = a + ((b - a) * i) / steps;
         await setDeviceVolumePercent(v);
-        await setSdkVolumePercent(v);
+        await setSdkVolumePercent(v); // ✅ Sync: SDK volume mitziehen
         await new Promise((r) => setTimeout(r, stepMs));
     }
 }
@@ -295,122 +283,78 @@ async function pauseHard() {
     } catch {}
 }
 
-// fetch mit Timeout (damit nichts hängen bleibt)
-async function fetchWithTimeout(url, options, timeoutMs) {
-    const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-        return await fetch(url, { ...options, signal: controller.signal });
-    } finally {
-        clearTimeout(t);
-    }
-}
-
 async function playContextHard(body) {
     try {
-        return await fetchWithTimeout(
-            `https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`,
-            {
-                method: "PUT",
-                headers: {
-                    Authorization: "Bearer " + accessToken,
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(body),
+        return await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
+            method: "PUT",
+            headers: {
+                Authorization: "Bearer " + accessToken,
+                "Content-Type": "application/json",
             },
-            TRANSITION.fetchTimeoutMs
-        );
+            body: JSON.stringify(body),
+        });
     } catch (e) {
-        log("playContextHard timeout/error:", e?.name || e);
+        log("playContextHard error:", e);
         return null;
     }
 }
 
-// 🔧 HARD CLEAN SWITCH: schnell + nie stuck
+function setControlsDisabled(disabled) {
+    // optional: nicht hart nötig, aber verhindert Race Conditions bei schnellen Klicks
+    if (prevBtn) prevBtn.disabled = disabled;
+    if (nextBtn) nextBtn.disabled = disabled;
+    // startBtn lassen wir aktiv, weil Pause/Resume evtl. gewünscht ist – kann man auch sperren.
+}
+
 async function cleanSwitchPlay(body) {
     if (!deviceId || !accessToken) return null;
 
+    // ✅ Lock, damit Next/Prev nicht mitten in der Transition kommt
     isAudioTransition = true;
     setControlsDisabled(true);
 
-    // Safety unlock, falls irgendwas weird ist
-    const safetyTimer = setTimeout(() => {
-        if (isAudioTransition) {
-            log("⚠️ Safety unlock (Transition dauerte zu lange)");
-            isAudioTransition = false;
-            setControlsDisabled(false);
-        }
-    }, TRANSITION.safetyUnlockMs);
-
     const originalVol = getUiVolumePercentFallback();
 
-    let res = null;
-
     try {
-        // 1) HARD MUTE (beide Layer)
+        // 🔇 HARD MUTE (beide Layer)
         await setDeviceVolumePercent(0);
         await setSdkVolumePercent(0);
-        await new Promise((r) => setTimeout(r, TRANSITION.muteSettleMs));
 
-        // 2) Pause (kurz, doppelt ist ok aber schnell)
+        // ⏸ Double pause (reduziert “old track blip” + garantiert Ruhe)
         await pauseHard();
         await new Promise((r) => setTimeout(r, 40));
         await pauseHard();
 
-        // 3) Play neuer Kontext bei 0ms
+        // ▶️ Force new context at 0
         const safeBody = body.context_uri
             ? { ...body, offset: { position: 0 }, position_ms: 0 }
             : { ...body, position_ms: 0 };
 
-        res = await playContextHard(safeBody);
+        const res = await playContextHard(safeBody);
 
-        // 3b) Fallback wenn nicht 204 / null
-        if (!res || res.status !== 204) {
-            const txt = res ? await res.text().catch(() => "") : "";
-            log("⚠️ play nicht 204:", res?.status, txt);
+        // kurze Zeit für Spotify umzustellen
+        await new Promise((r) => setTimeout(r, 90));
 
-            // Retry 1 (oft reicht das)
-            res = await playContextHard(safeBody);
+        // 🔊 Fade in
+        await fadeDeviceVolume(0, originalVol, 180, 8);
 
-            // Wenn immer noch fail: Resume als Rettung (damit nicht stuck)
-            if (!res || res.status !== 204) {
-                try {
-                    if (player) await player.resume();
-                    log("🛟 Fallback: player.resume()");
-                } catch {}
-            }
-        }
-
-        await new Promise((r) => setTimeout(r, TRANSITION.postPlaySettleMs));
-
-        // 4) Fade-in zurück
-        await fadeToVolumePercent(originalVol);
-
-        // UI konsistent
+        // UI Slider wieder konsistent halten
         if (volumeSlider) volumeSlider.value = String(originalVol);
         if (volumeValueEl) volumeValueEl.textContent = `${originalVol}%`;
 
         return res;
-    } catch (e) {
-        log("❌ cleanSwitchPlay error:", e);
-
-        // Fail-safe: zurück unmute & resume
-        try { await setDeviceVolumePercent(originalVol); } catch {}
-        try { await setSdkVolumePercent(originalVol); } catch {}
-        try { if (player) await player.resume(); } catch {}
-
-        return res;
     } finally {
-        clearTimeout(safetyTimer);
-
-        // WICHTIG: garantiert unlocken
         isAudioTransition = false;
         setControlsDisabled(false);
 
-        // queuedNext nach Transition ausführen
+        // ✅ Wenn während Transition “Next” gedrückt wurde → jetzt ausführen
         if (queuedNext && player) {
             queuedNext = false;
-            try { await player.nextTrack(); } catch (e) { log("queuedNext nextTrack error:", e); }
+            try {
+                await player.nextTrack();
+            } catch (e) {
+                log("queuedNext nextTrack error:", e);
+            }
         }
     }
 }
@@ -517,7 +461,7 @@ async function evaluateAndMaybeSwitchEmotion(reason) {
     setTimeout(() => {
         isSwitchingPlaylist = false;
         startProgressLoop();
-    }, 300);
+    }, 400);
 
     return true;
 }
@@ -569,7 +513,7 @@ async function initPlayerIfNeeded() {
         await transferPlaybackToWebSDKDevice();
         await wakeUpPlayback();
 
-        // 🔀 Shuffle
+        // 🔀 Shuffle (Erfolg ist 204, alles andere loggen)
         try {
             const shuffleRes = await fetch(
                 `https://api.spotify.com/v1/me/player/shuffle?state=true&device_id=${deviceId}`,
@@ -699,7 +643,7 @@ prevBtn?.addEventListener("click", async () => {
 nextBtn?.addEventListener("click", async () => {
     if (!player) return;
 
-    // Wenn gerade Transition läuft: Next merken und danach ausführen
+    // ✅ Wenn gerade Emotion-Transition läuft: Next merken und später ausführen
     if (isAudioTransition || isSwitchingPlaylist) {
         queuedNext = true;
         log("⏭️ Next queued (Transition läuft)...");
@@ -764,7 +708,7 @@ async function applyEmotionNow(emotion) {
         return;
     }
 
-    const txt = res ? await res.text().catch(() => "") : "";
+    const txt = res ? await res.text() : "";
     log("Fehler beim Wechseln:", res?.status, txt);
 
     if (res?.status === 403) {
@@ -801,7 +745,7 @@ async function startPlayback() {
         return;
     }
 
-    const txt = res ? await res.text().catch(() => "") : "";
+    const txt = res ? await res.text() : "";
     log("Fehler:", res?.status, txt);
 
     if (res?.status === 403) {
