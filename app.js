@@ -63,10 +63,6 @@ let playerReady = false;
 let preEndHandledTrackId = null;
 let isSwitchingPlaylist = false;
 
-// ✅ Guards
-let isPerformingAction = false;
-let skipGuardUntil = 0;
-
 // UI
 const startBtn = document.getElementById("startBtn");
 const prevBtn = document.getElementById("prevBtn");
@@ -154,7 +150,7 @@ async function exchangeCodeForToken(code) {
 })();
 
 // ===============================
-// ✅ Transfer Playback (gegen 403 Restriction violated)
+// ✅ FIX: Transfer Playback (gegen 403 Restriction violated)
 // ===============================
 async function transferPlaybackToWebSDKDevice() {
     if (!deviceId || !accessToken) return false;
@@ -191,85 +187,7 @@ async function transferPlaybackToWebSDKDevice() {
 }
 
 // ===============================
-// ✅ Debug
-// ===============================
-async function debugPlayerState(label = "DEBUG") {
-    try {
-        const [devicesRes, playerRes, currentRes] = await Promise.all([
-            fetch("https://api.spotify.com/v1/me/player/devices", {
-                headers: { Authorization: "Bearer " + accessToken },
-            }),
-            fetch("https://api.spotify.com/v1/me/player", {
-                headers: { Authorization: "Bearer " + accessToken },
-            }),
-            fetch("https://api.spotify.com/v1/me/player/currently-playing", {
-                headers: { Authorization: "Bearer " + accessToken },
-            }),
-        ]);
-
-        const devices = await devicesRes.json().catch(() => null);
-        const playerState = await playerRes.json().catch(() => null);
-        const current = await currentRes.json().catch(() => null);
-
-        log(`🧪 ${label} /devices:`, devicesRes.status, JSON.stringify(devices));
-        log(`🧪 ${label} /me/player:`, playerRes.status, JSON.stringify(playerState));
-        log(`🧪 ${label} /currently-playing:`, currentRes.status, JSON.stringify(current));
-    } catch (e) {
-        log("debugPlayerState error:", e);
-    }
-}
-
-// ===============================
-// ✅ Wake-up
-// ===============================
-async function wakeUpPlayback() {
-    try {
-        await fetch(`https://api.spotify.com/v1/me/player/pause?device_id=${deviceId}`, {
-            method: "PUT",
-            headers: { Authorization: "Bearer " + accessToken },
-        });
-    } catch {}
-
-    await new Promise((r) => setTimeout(r, 250));
-
-    try {
-        await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
-            method: "PUT",
-            headers: { Authorization: "Bearer " + accessToken },
-        });
-    } catch {}
-
-    await new Promise((r) => setTimeout(r, 250));
-}
-
-// ===============================
-// Helpers
-// ===============================
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-async function fadeVolumeTo(target, durationMs = 450, steps = 15) {
-    if (!player) return;
-    try {
-        const start = await player.getVolume();
-        const diff = target - start;
-        if (!Number.isFinite(start)) return;
-
-        for (let i = 1; i <= steps; i++) {
-            const v = start + (diff * i) / steps;
-            try { await player.setVolume(Math.max(0, Math.min(1, v))); } catch {}
-            await sleep(durationMs / steps);
-        }
-    } catch {}
-}
-
-function getUISliderVolume01() {
-    const v = Number(volumeSlider?.value);
-    if (Number.isFinite(v)) return Math.max(0, Math.min(100, v)) / 100;
-    return 0.5;
-}
-
-// ===============================
-// Auto: Emotion Buttons (override)
+// Auto: optional Emotion Buttons (falls auf index.html vorhanden)
 // ===============================
 function scheduleEmotionChange(emotion) {
     PLAYLISTS = getEffectivePlaylists();
@@ -298,8 +216,6 @@ function startProgressLoop() {
     progressInterval = setInterval(async () => {
         if (!player || isSeeking || isSwitchingPlaylist) return;
 
-        if (Date.now() < skipGuardUntil) return;
-
         try {
             const state = await player.getCurrentState();
             if (!state || !state.track_window || !state.track_window.current_track) return;
@@ -319,6 +235,7 @@ function startProgressLoop() {
                 preEndHandledTrackId = null;
             }
 
+            // ✅ Auto only
             if (SELECTED_MODE === "auto") {
                 const remaining = duration - position;
                 if (remaining <= 1500 && remaining >= 0 && preEndHandledTrackId !== currentId) {
@@ -334,12 +251,11 @@ function startProgressLoop() {
 }
 
 // ===============================
-// ✅ Auto: Emotion evaluieren & ggf. wechseln (ohne nested lock!)
+// Auto: Emotion evaluieren & ggf. wechseln
 // ===============================
 async function evaluateAndMaybeSwitchEmotion(reason) {
     if (SELECTED_MODE !== "auto") return false;
     if (isSwitchingPlaylist) return false;
-    if (Date.now() < skipGuardUntil) return false;
 
     PLAYLISTS = getEffectivePlaylists();
 
@@ -361,35 +277,21 @@ async function evaluateAndMaybeSwitchEmotion(reason) {
 
     if (!chosenEmotion || chosenEmotion === currentEmotion) return false;
 
-    if (isPerformingAction) {
-        log("⛔ Switch blockiert – Aktion läuft bereits.");
-        return false;
-    }
-
     log("Playlistwechsel:", currentEmotion, "→", chosenEmotion, "| Grund:", reason);
 
-    isPerformingAction = true;
     isSwitchingPlaylist = true;
     if (progressInterval) { clearInterval(progressInterval); progressInterval = null; }
 
-    try {
-        const originalVol = getUISliderVolume01();
+    try { await player.pause(); } catch {}
 
-        // Smooth
-        await fadeVolumeTo(0.05, 300, 12);
+    await applyEmotionNow(chosenEmotion);
 
-        await applyEmotionNow(chosenEmotion);
-
-        await sleep(150);
-
-        await fadeVolumeTo(originalVol, 450, 15);
-
-        return true;
-    } finally {
+    setTimeout(() => {
         isSwitchingPlaylist = false;
-        isPerformingAction = false;
         startProgressLoop();
-    }
+    }, 400);
+
+    return true;
 }
 
 // ===============================
@@ -435,23 +337,17 @@ async function initPlayerIfNeeded() {
             if (volumeValueEl) volumeValueEl.textContent = volPercent + "%";
         } catch {}
 
-        // ✅ Transfer + Wake-up
+        // ✅ FIX: Transfer Playback
         await transferPlaybackToWebSDKDevice();
-        await wakeUpPlayback();
 
-        // Shuffle
+        // Shuffle (optional)
         try {
             const shuffleRes = await fetch(
                 `https://api.spotify.com/v1/me/player/shuffle?state=true&device_id=${deviceId}`,
                 { method: "PUT", headers: { Authorization: "Bearer " + accessToken } }
             );
-
-            if (shuffleRes.status === 204) {
-                log("Shuffle aktiviert ✅");
-            } else {
-                const t = await shuffleRes.text();
-                log("Shuffle Fehler:", shuffleRes.status, t);
-            }
+            if (shuffleRes.status === 204) log("Shuffle aktiviert ✅");
+            else log("Shuffle Fehler:", shuffleRes.status, await shuffleRes.text());
         } catch (e) {
             log("Shuffle Request Error:", e);
         }
@@ -558,60 +454,25 @@ progressBar?.addEventListener("change", async (e) => {
 });
 
 // ===============================
-// Prev / Next (kein nested lock)
+// Prev / Next
 // ===============================
 prevBtn?.addEventListener("click", async () => {
     if (!player) return;
-    if (isPerformingAction) return;
-
-    isPerformingAction = true;
-    skipGuardUntil = Date.now() + 900;
-    if (progressInterval) { clearInterval(progressInterval); progressInterval = null; }
-
-    try {
-        await player.previousTrack();
-    } catch (err) {
-        log("Prev Fehler:", err);
-    } finally {
-        await sleep(250);
-        isPerformingAction = false;
-        startProgressLoop();
-    }
+    try { await player.previousTrack(); } catch (err) { log("Prev Fehler:", err); }
 });
 
 nextBtn?.addEventListener("click", async () => {
     if (!player) return;
-    if (Date.now() < skipGuardUntil) return;
-
-    skipGuardUntil = Date.now() + 1100;
-    if (progressInterval) { clearInterval(progressInterval); progressInterval = null; }
 
     try {
         if (SELECTED_MODE === "auto") {
-            // ✅ Erst Emotion-Switch probieren (macht eigenes Lock)
             const changed = await evaluateAndMaybeSwitchEmotion("skip_next");
-
-            // ✅ Wenn nicht gewechselt → dann normal skip (mit Lock)
-            if (!changed) {
-                if (isPerformingAction) {
-                    log("⛔ Skip blockiert – Aktion läuft bereits.");
-                } else {
-                    isPerformingAction = true;
-                    try { await player.nextTrack(); }
-                    finally { isPerformingAction = false; }
-                }
-            }
+            if (!changed) await player.nextTrack();
         } else {
-            if (isPerformingAction) return;
-            isPerformingAction = true;
-            try { await player.nextTrack(); }
-            finally { isPerformingAction = false; }
+            await player.nextTrack();
         }
     } catch (err) {
         log("Next Fehler:", err);
-    } finally {
-        await sleep(250);
-        startProgressLoop();
     }
 });
 
@@ -626,7 +487,7 @@ volumeSlider?.addEventListener("input", async (e) => {
 });
 
 // ===============================
-// ✅ Playlist setzen (Manual & Auto) + 403 Debug (wakeUp wieder drin)
+// ✅ Playlist setzen (Manual & Auto) + 403 Retry
 // ===============================
 async function applyEmotionNow(emotion) {
     PLAYLISTS = getEffectivePlaylists();
@@ -651,9 +512,6 @@ async function applyEmotionNow(emotion) {
         ? { context_uri: currentContextUri }
         : { uris: [currentContextUri] };
 
-    await transferPlaybackToWebSDKDevice();
-    await wakeUpPlayback(); // ✅ wichtig, damit Context-Wechsel zuverlässig greift
-
     const res = await fetch(
         `https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`,
         {
@@ -675,15 +533,30 @@ async function applyEmotionNow(emotion) {
     log("Fehler beim Wechseln:", res.status, txt);
 
     if (res.status === 403) {
-        log("⚠️ 403 Restriction violated → Debug Infos:");
-        await debugPlayerState("403_APPLY");
+        log("⚠️ 403 Restriction violated → Transfer + Retry...");
+        await transferPlaybackToWebSDKDevice();
+
+        const retry = await fetch(
+            `https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`,
+            {
+                method: "PUT",
+                headers: {
+                    Authorization: "Bearer " + accessToken,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(body),
+            }
+        );
+
+        if (retry.status === 204) log("✅ Retry erfolgreich!");
+        else log("❌ Retry fehlgeschlagen:", retry.status, await retry.text());
     }
 }
 
 window.applyEmotionNow = applyEmotionNow;
 
 // ===============================
-// Start playback + 403 Debug
+// Start playback + 403 handling
 // ===============================
 async function startPlayback() {
     if (!deviceId) {
@@ -697,9 +570,6 @@ async function startPlayback() {
     const body = currentContextUri.startsWith("spotify:playlist")
         ? { context_uri: currentContextUri }
         : { uris: [currentContextUri] };
-
-    await transferPlaybackToWebSDKDevice();
-    await wakeUpPlayback();
 
     const res = await fetch(
         `https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`,
@@ -722,12 +592,29 @@ async function startPlayback() {
     log("Fehler:", res.status, txt);
 
     if (res.status === 403) {
-        log("⚠️ 403 Restriction violated → Debug Infos:");
-        await debugPlayerState("403_START");
-
         log(
-            "Hinweis: Wenn Transfer (204) klappt, aber /play trotzdem 403 ist, " +
-            "ist es sehr oft: Nutzer nicht als Tester eingetragen (Dev Mode) oder Premium/Account-Restriction."
+            "⚠️ 403 Restriction violated: Bitte Spotify App (Handy/Desktop) kurz öffnen, " +
+            "ein Lied starten/pausieren und dann hier erneut versuchen."
         );
+
+        await transferPlaybackToWebSDKDevice();
+
+        const retry = await fetch(
+            `https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`,
+            {
+                method: "PUT",
+                headers: {
+                    Authorization: "Bearer " + accessToken,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(body),
+            }
+        );
+
+        if (retry.status === 204) {
+            log("✅ Retry nach Transfer erfolgreich!");
+        } else {
+            log("❌ Retry fehlgeschlagen:", retry.status, await retry.text());
+        }
     }
 }
