@@ -1,0 +1,809 @@
+:root {
+    --emotion-color: #ffcc00;
+    --emotion-bg: rgba(255, 204, 0, 0.35);
+    --bg-dark: #1a1400;
+    --card-bg: rgba(15, 15, 15, 0.75);
+    --text-main: #ffffff;
+    --text-dim: #b3b3b3;
+
+    --emotion-glow-strong: rgba(255, 204, 0, 0.55);
+    --emotion-glow-soft: rgba(255, 204, 0, 0.18);
+
+    --bg-pulse-speed: 9s;
+    --bg-jitter-speed: 999s;
+    --bg-jitter-amp: 0%;
+
+    transition:
+            --emotion-color 4.8s ease-in-out,
+            --emotion-bg 4.8s ease-in-out,
+            --bg-dark 6.2s ease-in-out,
+            --emotion-glow-strong 4.8s ease-in-out,
+            --emotion-glow-soft 4.8s ease-in-out;
+}
+
+/* ✅ wichtig gegen “rechts rüber hinaus” */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+
+    margin: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+
+    background-image:
+            radial-gradient(
+                    circle at 50% 35%,
+                    color-mix(in srgb, var(--emotion-bg) 85%, transparent) 0%,
+                    color-mix(in srgb, var(--emotion-bg) 35%, transparent) 22%,
+                    transparent 46%,
+                    var(--bg-dark) 72%
+            ),
+            radial-gradient(circle at 20% 80%, var(--emotion-glow-soft) 0%, transparent 58%),
+            radial-gradient(circle at 80% 20%, var(--emotion-glow-strong) 0%, transparent 62%),
+            radial-gradient(circle at 70% 75%, color-mix(in srgb, var(--emotion-color) 25%, transparent) 0%, transparent 62%),
+            radial-gradient(
+                    circle at 50% 50%,
+                    rgba(0,0,0,0) 0%,
+                    rgba(0,0,0,0.35) 62%,
+                    rgba(0,0,0,0.70) 100%
+            );
+
+    background-size: 120% 120%, 140% 140%, 130% 130%, 160% 160%, 100% 100%;
+    background-position: 50% 35%, 20% 80%, 80% 20%, 70% 75%, 50% 50%;
+
+    transition: background-color 5.5s ease-in-out;
+
+    animation:
+            bgPulse var(--bg-pulse-speed) ease-in-out infinite,
+            bgJitter var(--bg-jitter-speed) ease-in-out infinite;
+}
+
+/* global icon size */
+.icon {
+    width: 22px;
+    height: 22px;
+    display: block;
+}
+
+/* --- BACK BUTTON (top-left) --- */
+.home-btn {
+    position: fixed;
+    top: 1.6rem;
+    left: 1.6rem;
+
+    width: 46px;
+    height: 46px;
+    border-radius: 999px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    background: color-mix(in srgb, var(--card-bg) 80%, transparent);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: rgba(255,255,255,0.95);
+    text-decoration: none;
+
+    transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    z-index: 20;
+    backdrop-filter: blur(14px);
+    box-shadow: 0 16px 45px rgba(0,0,0,0.35);
+}
+.home-btn:hover {
+    transform: translateY(-1px) scale(1.04);
+    border-color: color-mix(in srgb, var(--emotion-color) 55%, rgba(255,255,255,0.12));
+    box-shadow: 0 18px 55px rgba(0,0,0,0.4), 0 0 20px color-mix(in srgb, var(--emotion-color) 20%, transparent);
+}
+.home-btn:active { transform: scale(0.98); }
+.icon-back { width: 22px; height: 22px; }
+
+/* --- OVERLAYS --- */
+.camera-overlay {
+    position: fixed;
+    top: 1.5rem;
+    right: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    z-index: 10;
+}
+
+#video-feed {
+    width: 320px;
+    height: 240px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    object-fit: cover;
+}
+
+.emotion-stats {
+    background: var(--card-bg);
+    padding: 1.25rem;
+    border-radius: 12px;
+    width: 320px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-sizing: border-box;
+    backdrop-filter: blur(10px);
+}
+
+.status-highlight {
+    color: var(--emotion-color);
+    transition: color 2s ease;
+    font-weight: bold;
+}
+
+/* --- BALKEN --- */
+.bar-bg {
+    background: rgba(255, 255, 255, 0.1);
+    height: 10px;
+    border-radius: 5px;
+    overflow: visible;
+    margin-top: 5px;
+}
+
+.bar-fill {
+    height: 100%;
+    width: 0%;
+    transition: width 0.6s cubic-bezier(0.17, 0.67, 0.83, 0.67);
+    border-radius: 5px;
+    position: relative;
+}
+
+#bar-happy { background: #ffcc00; box-shadow: 0 0 15px rgba(255, 204, 0, 0.8); }
+#bar-neutral { background: #ffffff; box-shadow: 0 0 12px rgba(255, 255, 255, 0.5); }
+#bar-sad { background: #3b82f6; box-shadow: 0 0 15px rgba(59, 130, 246, 0.8); }
+#bar-angry { background: #ef4444; box-shadow: 0 0 15px rgba(239, 68, 68, 0.8); }
+
+/* --- PLAYER --- */
+.main-player {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    transform: none;
+    gap: 10px;
+}
+
+#trackImage {
+    width: 300px;
+    height: 300px;
+    border-radius: 15px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+    margin-bottom: 1.1rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: transform 0.35s ease, box-shadow 0.35s ease, border-color 0.35s ease;
+    will-change: transform, box-shadow;
+}
+
+#trackImage:hover {
+    transform: scale(1.06);
+    border-color: var(--emotion-color);
+    box-shadow:
+            0 25px 65px rgba(0, 0, 0, 0.75),
+            0 0 25px var(--emotion-bg),
+            0 0 55px color-mix(in srgb, var(--emotion-color) 55%, transparent);
+}
+
+#trackTitle {
+    font-size: 1.75rem;
+    font-weight: 800;
+    margin-bottom: 0.2rem;
+    letter-spacing: 0.2px;
+    text-shadow:
+            0 0 14px color-mix(in srgb, var(--emotion-color) 55%, transparent),
+            0 0 28px color-mix(in srgb, var(--emotion-color) 30%, transparent);
+}
+
+#trackArtist {
+    color: color-mix(in srgb, var(--emotion-color) 40%, var(--text-dim));
+    margin-bottom: 0.2rem;
+    font-weight: 650;
+    text-shadow:
+            0 0 10px color-mix(in srgb, var(--emotion-color) 35%, transparent),
+            0 0 20px color-mix(in srgb, var(--emotion-color) 20%, transparent),
+            0 0 32px color-mix(in srgb, var(--emotion-color) 10%, transparent);
+    transition: color 1.6s ease, text-shadow 1.6s ease;
+}
+
+.player-controls {
+    position: fixed;
+    left: 50%;
+    bottom: 28px;
+    transform: translateX(-50%);
+    width: min(460px, calc(100vw - 40px));
+    margin-top: 0;
+
+    background: color-mix(in srgb, var(--card-bg) 85%, transparent);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 18px;
+    padding: 14px 16px;
+
+    backdrop-filter: blur(14px);
+    box-shadow: 0 18px 55px rgba(0,0,0,0.45);
+    z-index: 9;
+}
+
+.buttons-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    margin-bottom: 12px;
+}
+
+.btn-circle {
+    width: 46px;
+    height: 46px;
+    border-radius: 999px;
+
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.14);
+    color: rgba(255,255,255,0.92);
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    cursor: pointer;
+    transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.btn-circle:hover {
+    transform: translateY(-1px) scale(1.04);
+    border-color: color-mix(in srgb, var(--emotion-color) 55%, rgba(255,255,255,0.14));
+    box-shadow: 0 0 18px color-mix(in srgb, var(--emotion-color) 25%, transparent);
+}
+.btn-circle:active { transform: scale(0.98); }
+
+#startBtn {
+    width: 48px;
+    height: 48px;
+    border-radius: 999px;
+
+    border: 1px solid rgba(255,255,255,0.18);
+    background:
+            radial-gradient(circle at 30% 25%, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0.55) 28%, rgba(255,255,255,0.22) 100%);
+
+    color: #000;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    cursor: pointer;
+    box-shadow: 0 18px 45px rgba(0,0,0,0.40);
+    transition: transform 0.18s ease, box-shadow 0.25s ease, background 0.25s ease;
+    position: relative;
+}
+#startBtn:hover {
+    transform: translateY(-1px) scale(1.06);
+    box-shadow: 0 22px 55px rgba(0,0,0,0.45), 0 0 28px var(--emotion-bg);
+}
+#startBtn:active { transform: scale(0.99); }
+
+#startBtn .icon-play { display: block; }
+#startBtn .icon-pause { display: none; }
+
+#startBtn.is-playing .icon-play { display: none; }
+#startBtn.is-playing .icon-pause { display: block; }
+
+.progress-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.time {
+    font-size: 0.85rem;
+    color: rgba(255,255,255,0.85);
+    font-variant-numeric: tabular-nums;
+    min-width: 46px;
+}
+
+#progressBar {
+    flex: 1;
+    height: 6px;
+    border-radius: 999px;
+
+    -webkit-appearance: none;
+    appearance: none;
+
+    background: rgba(255,255,255,0.16);
+    border: 1px solid rgba(255,255,255,0.10);
+    outline: none;
+
+    cursor: pointer;
+}
+
+#progressBar::-webkit-slider-runnable-track {
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.16);
+}
+
+#progressBar::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 999px;
+
+    background: var(--emotion-color);
+    border: 2px solid rgba(0,0,0,0.35);
+
+    box-shadow:
+            0 0 0 4px color-mix(in srgb, var(--emotion-color) 18%, transparent),
+            0 0 18px color-mix(in srgb, var(--emotion-color) 40%, transparent);
+
+    margin-top: -6px;
+}
+
+#progressBar::-moz-range-track {
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.16);
+    border: 1px solid rgba(255,255,255,0.10);
+}
+#progressBar::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 999px;
+    background: var(--emotion-color);
+    border: 2px solid rgba(0,0,0,0.35);
+    box-shadow:
+            0 0 0 4px color-mix(in srgb, var(--emotion-color) 18%, transparent),
+            0 0 18px color-mix(in srgb, var(--emotion-color) 40%, transparent);
+}
+
+.volume-control {
+    position: fixed;
+    bottom: 2rem;
+    left: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    background: color-mix(in srgb, var(--card-bg) 85%, transparent);
+    padding: 10px 14px;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 16px 45px rgba(0,0,0,0.35);
+}
+
+.volume-icon {
+    color: rgba(255,255,255,0.92);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#volumeSlider {
+    accent-color: var(--emotion-color);
+    width: 92px;
+}
+
+.test-panel {
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    opacity: 0.5;
+    display: flex;
+    gap: 5px;
+}
+.test-panel button {
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+/* Background Animations */
+@keyframes bgPulse {
+    0% {
+        background-size: 120% 120%, 140% 140%, 130% 130%, 160% 160%, 100% 100%;
+        background-position: 50% 35%, 20% 80%, 80% 20%, 70% 75%, 50% 50%;
+    }
+    50% {
+        background-size: 140% 140%, 165% 165%, 150% 150%, 182% 182%, 100% 100%;
+        background-position: 51% 33%, 24% 78%, 78% 24%, 68% 70%, 50% 50%;
+    }
+    100% {
+        background-size: 120% 120%, 140% 140%, 130% 130%, 160% 160%, 100% 100%;
+        background-position: 50% 35%, 20% 80%, 80% 20%, 70% 75%, 50% 50%;
+    }
+}
+
+@keyframes bgJitter {
+    0% {
+        background-position:
+                50% 35%,
+                calc(20% + (var(--bg-jitter-amp) * 0)) calc(80% - (var(--bg-jitter-amp) * 0)),
+                calc(80% - (var(--bg-jitter-amp) * 0)) calc(20% + (var(--bg-jitter-amp) * 0)),
+                70% 75%,
+                50% 50%;
+    }
+    13% {
+        background-position:
+                50% 35%,
+                calc(20% + var(--bg-jitter-amp)) calc(80% - (var(--bg-jitter-amp) * 0.6)),
+                calc(80% - (var(--bg-jitter-amp) * 0.4)) calc(20% + var(--bg-jitter-amp)),
+                calc(70% - (var(--bg-jitter-amp) * 0.5)) calc(75% + (var(--bg-jitter-amp) * 0.7)),
+                50% 50%;
+    }
+    31% {
+        background-position:
+                50% 35%,
+                calc(20% - (var(--bg-jitter-amp) * 0.7)) calc(80% + (var(--bg-jitter-amp) * 0.4)),
+                calc(80% + (var(--bg-jitter-amp) * 0.9)) calc(20% - (var(--bg-jitter-amp) * 0.3)),
+                calc(70% + (var(--bg-jitter-amp) * 0.6)) calc(75% - (var(--bg-jitter-amp) * 0.8)),
+                50% 50%;
+    }
+    52% {
+        background-position:
+                50% 35%,
+                calc(20% + (var(--bg-jitter-amp) * 0.4)) calc(80% - (var(--bg-jitter-amp) * 0.9)),
+                calc(80% - (var(--bg-jitter-amp) * 1.1)) calc(20% + (var(--bg-jitter-amp) * 0.5)),
+                calc(70% - (var(--bg-jitter-amp) * 0.8)) calc(75% + (var(--bg-jitter-amp) * 0.6)),
+                50% 50%;
+    }
+    77% {
+        background-position:
+                50% 35%,
+                calc(20% - (var(--bg-jitter-amp) * 0.2)) calc(80% + (var(--bg-jitter-amp) * 0.8)),
+                calc(80% + (var(--bg-jitter-amp) * 0.6)) calc(20% - (var(--bg-jitter-amp) * 0.9)),
+                calc(70% + (var(--bg-jitter-amp) * 0.3)) calc(75% - (var(--bg-jitter-amp) * 0.2)),
+                50% 50%;
+    }
+    100% {
+        background-position:
+                50% 35%,
+                20% 80%,
+                80% 20%,
+                70% 75%,
+                50% 50%;
+    }
+}
+
+/* =========================
+   START PAGE: Dark Purple only
+   -> auf start.html: <body class="is-start">
+   ========================= */
+
+body.is-start {
+    --bg-dark: #07010f;
+    --emotion-color: #b58cff;
+    --emotion-bg: rgba(181, 140, 255, 0.20);
+    --emotion-glow-strong: rgba(181, 140, 255, 0.26);
+    --emotion-glow-soft: rgba(181, 140, 255, 0.14);
+
+    animation: bgPulse 14s ease-in-out infinite;
+    --bg-jitter-speed: 999s;
+    --bg-jitter-amp: 0%;
+}
+
+.start-wrap {
+    width: min(900px, calc(100vw - 40px));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    padding-top: 18px;
+}
+
+.start-title {
+    font-size: clamp(4.8rem, 9.2vw, 7.0rem);
+    font-weight: 980;
+    letter-spacing: 1.2px;
+    margin: 0;
+    text-align: center;
+
+    text-shadow:
+            0 0 10px rgba(255,255,255,0.25),
+            0 0 26px rgba(181, 140, 255, 0.55),
+            0 0 60px rgba(181, 140, 255, 0.28),
+            0 0 110px rgba(181, 140, 255, 0.16);
+}
+
+/* ✅ Logout unten links in die Ecke */
+.start-logout {
+    position: fixed;
+    left: 1.6rem;
+    bottom: 1.6rem;
+
+    margin-top: 0;
+    color: rgba(255,255,255,0.70);
+    text-decoration: underline;
+    cursor: pointer;
+    font-weight: 800;
+
+    z-index: 30;
+    text-shadow: 0 0 16px rgba(181, 140, 255, 0.18);
+}
+
+/* --- START UI --- */
+.mode-grid {
+    margin-top: 8px;
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.mode-card {
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 18px;
+    padding: 18px 18px;
+    background: color-mix(in srgb, var(--card-bg) 80%, transparent);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 18px 55px rgba(0,0,0,0.35);
+    cursor: pointer;
+    color: var(--text-main);
+    text-align: left;
+    transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+    min-height: 160px;
+}
+
+.mode-card:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--emotion-color) 55%, rgba(255,255,255,0.10));
+    box-shadow: 0 20px 65px rgba(0,0,0,0.40), 0 0 26px color-mix(in srgb, var(--emotion-color) 18%, transparent);
+}
+
+.mode-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.06);
+    font-weight: 900;
+    font-size: 0.85rem;
+    color: rgba(255,255,255,0.92);
+}
+
+.mode-name {
+    margin: 14px 0 0 0;
+    font-size: 1.25rem;
+    font-weight: 950;
+    letter-spacing: 0.2px;
+}
+
+.mode-mini {
+    margin: 8px 0 0 0;
+    color: rgba(255,255,255,0.78);
+    line-height: 1.35;
+}
+
+/* ✅ Playlist/Details: fix gegen rechts overflow + cleaner hint */
+.start-details {
+    width: 100%;
+    margin-top: 6px;
+    background: color-mix(in srgb, var(--card-bg) 80%, transparent);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 18px;
+    backdrop-filter: blur(14px);
+    box-shadow: 0 18px 55px rgba(0,0,0,0.35);
+    overflow: hidden; /* ✅ wichtig */
+}
+
+.start-details summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 14px 16px;
+    user-select: none;
+    font-weight: 950;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+.start-details summary::-webkit-details-marker { display:none; }
+
+.start-details .chev {
+    width: 10px;
+    height: 10px;
+    border-right: 2px solid rgba(255,255,255,0.65);
+    border-bottom: 2px solid rgba(255,255,255,0.65);
+    transform: rotate(-45deg);
+    transition: transform .12s ease;
+}
+.start-details[open] .chev { transform: rotate(45deg); }
+
+.start-details .details-body {
+    padding: 0 16px 16px 16px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    overflow: hidden; /* ✅ wichtig */
+}
+
+/* ✅ Text exakt wie du willst + sauberer Umbruch */
+.start-details .hint {
+    color: rgba(255,255,255,0.72);
+    font-size: 0.92rem;
+    margin: 12px 0 0 0;
+    line-height: 1.35;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+/* Inputs */
+.start-inputs {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-top: 14px;
+    width: 100%;
+}
+
+.start-input-row {
+    width: 100%;
+    overflow: hidden; /* ✅ verhindert rechts raus */
+}
+
+.start-input-row label {
+    display:flex;
+    align-items:center;
+    justify-content: space-between;
+    font-size: .92rem;
+    margin-bottom: 8px;
+    font-weight: 950;
+}
+
+.start-input-row input {
+    width: 100%;
+    max-width: 100%;
+    display: block;
+
+    padding: 11px 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(0,0,0,0.22);
+    color: rgba(255,255,255,0.92);
+    outline: none;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.start-input-row input::placeholder { color: rgba(255,255,255,0.40); }
+
+/* Fixe Emotion Farben */
+.label-happy   { color: #ffcc00; text-shadow: 0 0 12px rgba(255,204,0,0.35); }
+.label-sad     { color: #3b82f6; text-shadow: 0 0 12px rgba(59,130,246,0.35); }
+.label-neutral { color: #d1d5db; text-shadow: 0 0 12px rgba(255,255,255,0.18); }
+.label-angry   { color: #ef4444; text-shadow: 0 0 12px rgba(239,68,68,0.35); }
+
+.start-rowBtns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 14px;
+    align-items: center;
+}
+
+.start-btn {
+    border-radius: 14px;
+    padding: 10px 12px;
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.92);
+    font-weight: 950;
+    cursor: pointer;
+    transition: transform .12s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.start-btn:hover {
+    transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--emotion-color) 45%, rgba(255,255,255,0.14));
+    box-shadow: 0 0 18px color-mix(in srgb, var(--emotion-color) 18%, transparent);
+}
+.start-btn.danger {
+    border-color: rgba(239,68,68,0.28);
+    background: rgba(239,68,68,0.10);
+}
+
+.start-status {
+    font-size: .92rem;
+    color: rgba(255,255,255,0.75);
+    margin-left: 6px;
+}
+
+@media (max-width: 820px){
+    .mode-grid{ grid-template-columns: 1fr; }
+}
+
+/* =========================
+   MANUAL: Emotion messen UI
+   ========================= */
+
+/* Button "Emotion messen" leuchtend */
+#measureBtn,
+.measure-btn {
+    position: relative;
+    border-radius: 14px;
+    padding: 12px 14px;
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.95);
+    font-weight: 950;
+    letter-spacing: 0.2px;
+    cursor: pointer;
+
+    box-shadow:
+            0 18px 45px rgba(0,0,0,0.35),
+            0 0 18px color-mix(in srgb, var(--emotion-color) 22%, transparent);
+    text-shadow:
+            0 0 10px color-mix(in srgb, var(--emotion-color) 30%, transparent),
+            0 0 22px color-mix(in srgb, var(--emotion-color) 16%, transparent);
+
+    transition: transform .15s ease, box-shadow .25s ease, border-color .25s ease;
+}
+
+#measureBtn:hover,
+.measure-btn:hover {
+    transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--emotion-color) 55%, rgba(255,255,255,0.14));
+    box-shadow:
+            0 22px 55px rgba(0,0,0,0.40),
+            0 0 30px color-mix(in srgb, var(--emotion-color) 28%, transparent);
+}
+
+#measureBtn:active,
+.measure-btn:active {
+    transform: scale(0.99);
+}
+
+#measureBtn:disabled,
+.measure-btn:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+    box-shadow: 0 18px 45px rgba(0,0,0,0.25);
+    text-shadow: none;
+}
+
+/* ✅ "Messen" (oder irgendein Text dafür) komplett ausblenden */
+#measureLabel,
+.measureLabel,
+.measure-label,
+.measure-title,
+#measureTitle,
+#measureText,
+.measure-text {
+    display: none !important;
+}
+
+/* ✅ Countdown: extra groß + super leuchtend in Emotion-Farbe */
+#countdown,
+.measure-countdown {
+    margin-top: 10px;
+    font-size: clamp(3.4rem, 7.2vw, 5.4rem);
+    font-weight: 1000;
+    line-height: 1;
+    text-align: center;
+
+    color: var(--emotion-color);
+    text-shadow:
+            0 0 12px color-mix(in srgb, var(--emotion-color) 65%, transparent),
+            0 0 28px color-mix(in srgb, var(--emotion-color) 42%, transparent),
+            0 0 70px color-mix(in srgb, var(--emotion-color) 22%, transparent),
+            0 0 130px color-mix(in srgb, var(--emotion-color) 12%, transparent);
+
+    transition: color 0.6s ease, text-shadow 0.6s ease, transform 0.18s ease;
+}
+
+/* Optional: kleiner Pop beim Tick (wenn JS kurz .is-tick setzt) */
+#countdown.is-tick,
+.measure-countdown.is-tick {
+    transform: scale(1.07);
+}

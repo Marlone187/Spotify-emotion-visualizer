@@ -76,8 +76,8 @@ const durationEl = document.getElementById("durationTime");
 const volumeSlider = document.getElementById("volumeSlider");
 const volumeValueEl = document.getElementById("volumeValue");
 
-const PLAY_ICON = "▶️";
-const PAUSE_ICON = "⏸️";
+const PLAY_ICON = "▶";
+const PAUSE_ICON = "❚❚";
 
 // Start-Button enable
 if (startBtn) {

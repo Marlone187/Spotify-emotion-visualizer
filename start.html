@@ -10,235 +10,75 @@
     }
   </script>
 
-  <style>
-    body{
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background:#050816;
-      color:#e5e7eb;
-      padding:2rem;
-      display:grid;
-      place-items:center;
-      min-height:100vh;
-    }
-    .container{ width:min(900px,100%); }
-
-    .brand{ display:flex; align-items:center; gap:.75rem; margin-bottom:.25rem; }
-    .logo{
-      width:48px; height:48px; border-radius:14px;
-      background: radial-gradient(circle at top left, #3b82f6, #22c55e);
-      display:grid; place-items:center; font-size:1.6rem;
-      box-shadow: 0 0 20px rgba(59,130,246,.35);
-    }
-    .title{ font-size:2rem; font-weight:900; letter-spacing:.03em; }
-    .subtitle{ color:#9ca3af; margin:0 0 1.25rem 3.1rem; font-size:.95rem; }
-
-    .grid{
-      display:grid;
-      grid-template-columns:repeat(2, minmax(0, 1fr));
-      gap:1rem;
-      margin-top:.5rem;
-    }
-    .card-btn{
-      background:#020617;
-      border:1px solid #0f172a;
-      border-radius:1rem;
-      padding:1.5rem;
-      cursor:pointer;
-      text-align:left;
-      color:#e5e7eb;
-      transition:transform .08s ease, border-color .08s ease;
-      min-height:180px;
-    }
-    .card-btn:hover{ transform:translateY(-2px); border-color:#3b82f6; }
-    .card-btn h2{ margin:0 0 .5rem 0; font-size:1.25rem; }
-    .tag{
-      display:inline-block;
-      padding:.25rem .5rem;
-      border-radius:999px;
-      font-size:.75rem;
-      background:#0f172a;
-      color:#9ca3af;
-      margin-bottom:.75rem;
-    }
-    .card-btn ul{ margin:.75rem 0 0 1rem; color:#9ca3af; }
-
-    @media (max-width:720px){
-      .grid{ grid-template-columns:1fr; }
-      .subtitle{ margin-left:0; }
-    }
-
-    details{
-      margin-top: 1rem;
-      background:#020617;
-      border:1px solid #0f172a;
-      border-radius:1rem;
-      overflow:hidden;
-    }
-    summary{
-      list-style:none;
-      cursor:pointer;
-      padding: .9rem 1.1rem;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:1rem;
-      user-select:none;
-      font-weight:800;
-    }
-    summary::-webkit-details-marker{ display:none; }
-    .summary-left{ display:flex; align-items:center; gap:.6rem; }
-    .chev{
-      width: 10px; height: 10px;
-      border-right: 2px solid #9ca3af;
-      border-bottom: 2px solid #9ca3af;
-      transform: rotate(-45deg);
-      transition: transform .12s ease;
-      margin-left:.25rem;
-    }
-    details[open] .chev{ transform: rotate(45deg); }
-
-    .details-body{
-      padding: 0 1.1rem 1.1rem 1.1rem;
-      border-top: 1px solid #0f172a;
-    }
-
-    .hint{ color:#9ca3af; font-size:.9rem; margin:.25rem 0 0 0; }
-    .ok{ color:#34d399; }
-    .bad{ color:#fca5a5; }
-
-    .inputs{ display:grid; gap:.75rem; margin-top:.9rem; }
-    label{ font-size:.9rem; color:#cbd5e1; display:block; margin-bottom:.35rem; }
-    input{
-      width:100%;
-      padding:.65rem .75rem;
-      border-radius:.75rem;
-      border:1px solid #1f2a44;
-      background:#000814;
-      color:#e5e7eb;
-      outline:none;
-    }
-    input::placeholder{ color:#6b7280; }
-
-    .rowBtns{
-      display:flex;
-      gap:.5rem;
-      flex-wrap:wrap;
-      margin-top: .9rem;
-      align-items:center;
-    }
-    .btn{
-      background:#0f172a;
-      color:#e5e7eb;
-      border:1px solid #1f2a44;
-      border-radius:.75rem;
-      padding:.6rem .9rem;
-      cursor:pointer;
-      font-weight:700;
-    }
-    .btn.secondary{ opacity:.9; }
-    .btn.danger{ border-color:#5b1b1b; background:#1a0b0b; }
-
-    .logout{
-      margin-top:1rem;
-      display:inline-block;
-      color:#9ca3af;
-      text-decoration:underline;
-      cursor:pointer;
-    }
-
-    code{
-      background:#0b1020;
-      border:1px solid #0f172a;
-      border-radius:.5rem;
-      padding:.1rem .35rem;
-      color:#cbd5e1;
-    }
-  </style>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 
-<body>
-<div class="container">
-  <div class="brand">
-    <div class="logo">🎧</div>
-    <div class="title">Vibecheck</div>
-  </div>
-  <div class="subtitle">
-    Check deinen Vibe und lass deine Emotionen deine Musik steuern ✨
-  </div>
+<body class="is-start">
 
-  <div class="grid">
-    <button class="card-btn" onclick="
+<main class="start-wrap">
+  <h1 class="start-title">Vibecheck</h1>
+
+  <section class="mode-grid">
+    <button class="mode-card" onclick="
         sessionStorage.setItem('selected_mode','manual');
         window.location='manual.html';
       ">
-      <div class="tag">Manuell</div>
-      <h2>Manuelle Emotion</h2>
-      <p>Button drücken → 5 Sekunden Emotion machen → passende Playlist abspielen.</p>
-      <ul>
-        <li>Messung nur bei Klick</li>
-        <li>Playlist bleibt bis nächste Messung</li>
-      </ul>
+      <span class="mode-pill">MANUELL</span>
+      <h2 class="mode-name">Manuelle Emotion</h2>
+      <p class="mode-mini">Emotionsmessung bei Klick.</p>
     </button>
 
-    <button class="card-btn" onclick="
+    <button class="mode-card" onclick="
         sessionStorage.setItem('selected_mode','auto');
         window.location='index.html';
       ">
-      <div class="tag">Automatisch</div>
-      <h2>Automatische Emotion</h2>
-      <p>Emotion wird im Song getrackt und Playlist automatisch gewechselt.</p>
-      <ul>
-        <li>Live-Erkennung</li>
-        <li>Tracking pro Song</li>
-        <li>Auto-Wechsel bei Songende/Skip</li>
-      </ul>
+      <span class="mode-pill">AUTO</span>
+      <h2 class="mode-name">Automatische Emotion</h2>
+      <p class="mode-mini">Automatische Erkennung während Songs.</p>
     </button>
-  </div>
+  </section>
 
-  <details id="playlistDetails">
+  <details id="playlistDetails" class="start-details">
     <summary>
-        <span class="summary-left">
-          🎵 Playlists anpassen (optional)
-          <span class="hint">(Prototyp: Speicherung im Browser)</span>
-        </span>
+      <span>Playlists anpassen</span>
       <span class="chev" aria-hidden="true"></span>
     </summary>
 
     <div class="details-body">
-      <p class="hint" style="margin-top:.75rem;">
-        Akzeptiert: <code>spotify:playlist:ID</code> oder <code>https://open.spotify.com/playlist/ID</code>.
-        Wenn ein Feld leer ist, wird die Default-Playlist genutzt.
-      </p>
 
-      <div class="inputs">
-        <div>
-          <label>😊 Happy</label>
-          <input id="pl_happy" placeholder="Spotify Playlist Link/URI (optional)" />
+
+      <div class="start-inputs">
+        <div class="start-input-row">
+          <label><span class="label-happy">HAPPY</span></label>
+          <input id="pl_happy" placeholder="Playlist Link/URI (optional)" />
         </div>
-        <div>
-          <label>😢 Sad</label>
-          <input id="pl_sad" placeholder="Spotify Playlist Link/URI (optional)" />
+
+        <div class="start-input-row">
+          <label><span class="label-sad">SAD</span></label>
+          <input id="pl_sad" placeholder="Playlist Link/URI (optional)" />
         </div>
-        <div>
-          <label>😐 Neutral</label>
-          <input id="pl_neutral" placeholder="Spotify Playlist Link/URI (optional)" />
+
+        <div class="start-input-row">
+          <label><span class="label-neutral">NEUTRAL</span></label>
+          <input id="pl_neutral" placeholder="Playlist Link/URI (optional)" />
         </div>
-        <div>
-          <label>😡 Angry</label>
-          <input id="pl_angry" placeholder="Spotify Playlist Link/URI (optional)" />
+
+        <div class="start-input-row">
+          <label><span class="label-angry">ANGRY</span></label>
+          <input id="pl_angry" placeholder="Playlist Link/URI (optional)" />
         </div>
       </div>
 
-      <div class="rowBtns">
-        <button class="btn" id="savePlaylistsBtn">Speichern</button>
-        <button class="btn secondary" id="loadPlaylistsBtn">Neu laden</button>
-        <button class="btn danger" id="resetPlaylistsBtn">Default</button>
-        <span id="playlistStatus" class="hint"></span>
+      <div class="start-rowBtns">
+        <button class="start-btn" id="savePlaylistsBtn">Speichern</button>
+        <button class="start-btn" id="loadPlaylistsBtn">Neu laden</button>
+        <button class="start-btn danger" id="resetPlaylistsBtn">Default</button>
+        <span id="playlistStatus" class="start-status"></span>
       </div>
     </div>
   </details>
 
-  <span class="logout" onclick="
+  <span class="start-logout" onclick="
       sessionStorage.removeItem('spotify_access_token');
       sessionStorage.removeItem('code_verifier');
       sessionStorage.removeItem('selected_mode');
@@ -246,7 +86,7 @@
     ">
       Logout / neu verbinden
     </span>
-</div>
+</main>
 
 <script>
   const inputs = {
@@ -282,8 +122,7 @@
     inputs.neutral.value = data.neutral_link || "";
     inputs.angry.value = data.angry_link || "";
 
-    statusEl.textContent = saved ? "Custom-Playlists geladen." : "Keine Custom-Playlists gesetzt (Default aktiv).";
-    statusEl.className = "hint " + (saved ? "ok" : "");
+    statusEl.textContent = saved ? "Custom-Playlists geladen." : "Default-Playlists aktiv.";
   }
 
   function saveToStorage(){
@@ -301,28 +140,26 @@
     };
 
     const invalids = [];
-    if(happy_link && !parsed.happy_uri) invalids.push("Happy");
-    if(sad_link && !parsed.sad_uri) invalids.push("Sad");
-    if(neutral_link && !parsed.neutral_uri) invalids.push("Neutral");
-    if(angry_link && !parsed.angry_uri) invalids.push("Angry");
+    if(happy_link && !parsed.happy_uri) invalids.push("HAPPY");
+    if(sad_link && !parsed.sad_uri) invalids.push("SAD");
+    if(neutral_link && !parsed.neutral_uri) invalids.push("NEUTRAL");
+    if(angry_link && !parsed.angry_uri) invalids.push("ANGRY");
 
     if(invalids.length){
-      statusEl.textContent = "Ungültige Links: " + invalids.join(", ");
-      statusEl.className = "hint bad";
+      statusEl.textContent = "Ungültig: " + invalids.join(", ");
       return;
     }
 
     const allEmpty = !happy_link && !sad_link && !neutral_link && !angry_link;
     if(allEmpty){
       localStorage.removeItem("custom_playlists");
-      statusEl.textContent = "Alles leer → Default-Playlists aktiv.";
-      statusEl.className = "hint ok";
+      statusEl.textContent = "Alles leer → Default aktiv.";
+      detailsEl.open = false;
       return;
     }
 
     localStorage.setItem("custom_playlists", JSON.stringify(parsed));
-    statusEl.textContent = "Gespeichert ✅";
-    statusEl.className = "hint ok";
+    statusEl.textContent = "Gespeichert";
     detailsEl.open = false;
   }
 
@@ -333,7 +170,6 @@
     inputs.neutral.value = "";
     inputs.angry.value = "";
     statusEl.textContent = "Zurückgesetzt → Default aktiv.";
-    statusEl.className = "hint ok";
     detailsEl.open = false;
   }
 
@@ -343,5 +179,6 @@
 
   writeInputsFromStorage();
 </script>
+
 </body>
 </html>
