@@ -1,4 +1,4 @@
-const CLIENT_ID = "c6c192d6f0c54c68bbb4342717ca9501";
+const CLIENT_ID = "c1118e23caa84e6497022d00757dc5a0";
 const REDIRECT_URI = "https://marlone187.github.io/Spotify-emotion-visualizer/callback.html";
 
 // Modus: "auto" oder "manual"
