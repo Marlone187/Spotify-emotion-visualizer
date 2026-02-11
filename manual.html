@@ -123,7 +123,6 @@
     const countdownEl = document.getElementById("countdown");
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-    // ✅ Theme wie index.html (CSS Variablen ändern)
     function setEmotionTheme(emotion) {
         const root = document.documentElement;
 
@@ -158,14 +157,12 @@
         }
     }
 
-    // ✅ START: manual.html soll immer mit HAPPY starten
     window.addEventListener("DOMContentLoaded", () => {
         setEmotionTheme("happy");
     });
 
     async function doManualMeasurement() {
-        // optional: wenn du willst, kannst du hier prüfen ob Kamera ready ist:
-        // if (!window.__cameraReady) return;
+
 
         if (typeof window.resetEmotionStats !== "function" || typeof window.getDominantEmotion !== "function") return;
         if (typeof window.applyEmotionNow !== "function") return;
@@ -191,7 +188,6 @@
             return;
         }
 
-        // ✅ Danach Theme nach Emotion setzen (wie index.html)
         setEmotionTheme(dominant);
 
         await window.applyEmotionNow(dominant);

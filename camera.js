@@ -17,14 +17,12 @@
     const log = (...a) => console.log("[camera]", ...a);
 
     function ensureBarsUI() {
-        // wir nutzen vorhandenes Layout, falls vorhanden
         const statsBox = document.querySelector(".camera-overlay .emotion-stats");
         if (!statsBox) return;
 
-        // Status-Zeile sicherstellen
+
         let statusSpan = document.getElementById("emotion-text");
         if (!statusSpan) {
-            // wenn eine status-line existiert, nutzen; sonst erstellen
             let statusLine = statsBox.querySelector(".status-line");
             if (!statusLine) {
                 statusLine = document.createElement("div");
@@ -36,7 +34,6 @@
             statusSpan = document.getElementById("emotion-text");
         }
 
-        // Balken prüfen – wenn happy nicht existiert, bauen wir alle 4
         if (document.getElementById("bar-happy")) return;
 
         const makeBar = (title, key) => {
@@ -68,7 +65,7 @@
         statsBox.appendChild(makeBar("Sad", "sad"));
         statsBox.appendChild(makeBar("Angry", "angry"));
 
-        log("Balken-UI ergänzt ✅");
+        log("Balken-UI ergänzt ");
     }
 
     function setStatusMoment(bestEmo, prob01) {
@@ -77,13 +74,13 @@
         window.__cameraStatus = text;
 
         const el = document.getElementById("emotion-text");
-        if (el) el.textContent = text; // ✅ NIE innerHTML
+        if (el) el.textContent = text; //
     }
 
     function setStatusPlain(text) {
         window.__cameraStatus = text;
         const el = document.getElementById("emotion-text");
-        if (el) el.textContent = text; // ✅ NIE innerHTML
+        if (el) el.textContent = text; //
     }
 
     function updateBars(stats) {
@@ -153,7 +150,7 @@
     }
 
     window.addEventListener("load", () => {
-        // ✅ UI in vorhandenes Layout injizieren (manual + index)
+
         ensureBarsUI();
 
         const videoEl = document.getElementById("video-feed");
@@ -185,7 +182,7 @@
                 try { await videoEl.play(); } catch {}
 
                 await waitForVideoReady(videoEl, 12000);
-                log("Video ready ✅", videoEl.videoWidth, "x", videoEl.videoHeight);
+                log("Video ready ", videoEl.videoWidth, "x", videoEl.videoHeight);
 
                 await loadModelsWithRetry("./models", 3);
 
@@ -228,7 +225,7 @@
                     const bestEmo = best?.[0] || "neutral";
                     const prob = best?.[1] || 0;
 
-                    // ✅ Aggregation mit Multiplier (sad/angry leichter)
+                    //  Aggregation mit Multiplier
                     const MULT = { happy: 1, neutral: 1, sad: 5, angry: 2 };
 
                     for (const [k, v] of Object.entries(filtered)) {
@@ -244,13 +241,13 @@
                         EMOTIONS.forEach((e) => (stats[e] = Math.round((emotionScores[e] / total) * 100)));
                     }
 
-                    // ✅ NUR Status + Balken
+                    // Status und Balken
                     setStatusMoment(bestEmo, prob);
                     updateBars(stats);
                 };
 
                 requestAnimationFrame(loop);
-                log("Detection Loop gestartet ✅");
+                log("Detection Loop gestartet ");
             } catch (e) {
                 window.__cameraReady = false;
                 log("Kamera init Fehler:", e);
