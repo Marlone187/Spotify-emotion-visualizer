@@ -1,7 +1,7 @@
 const CLIENT_ID = "c1118e23caa84e6497022d00757dc5a0";
 const REDIRECT_URI = "https://marlone187.github.io/Spotify-emotion-visualizer/callback.html";
 
-// Modus: "auto" oder "manual"
+// Modusasuwahl
 const SELECTED_MODE = sessionStorage.getItem("selected_mode") || "auto";
 
 // Default Playlists
@@ -12,7 +12,7 @@ const DEFAULT_PLAYLISTS = {
     angry: "spotify:playlist:55DSMbgOO36tDodpwCykG4",
 };
 
-// Custom Playlists (Prototyp) aus localStorage
+// Custom Playlists
 function loadCustomPlaylists() {
     const raw = localStorage.getItem("custom_playlists");
     if (!raw) return null;
@@ -33,7 +33,6 @@ function getEffectivePlaylists() {
 
 let PLAYLISTS = getEffectivePlaylists();
 
-// Startemotion
 let currentEmotion =
     SELECTED_MODE === "manual"
         ? (sessionStorage.getItem("manual_emotion") || "happy")
@@ -41,17 +40,14 @@ let currentEmotion =
 
 let currentContextUri = PLAYLISTS[currentEmotion];
 
-// Auto: Button override
 let pendingEmotion = null;
 
-// Logging
 const logEl = document.getElementById("log");
 const log = (...msg) => {
     if (logEl) logEl.textContent += msg.join(" ") + "\n";
     console.log(...msg);
 };
 
-// Token / Player
 let accessToken = sessionStorage.getItem("spotify_access_token") || null;
 let player = null;
 let deviceId = null;
@@ -59,7 +55,6 @@ let lastTrackId = null;
 let isPlaying = false;
 let playerReady = false;
 
-// Auto helpers
 let preEndHandledTrackId = null;
 let isSwitchingPlaylist = false;
 
@@ -79,7 +74,7 @@ const volumeValueEl = document.getElementById("volumeValue");
 const PLAY_ICON = "▶";
 const PAUSE_ICON = "❚❚";
 
-// Start-Button enable
+// Start-Button
 if (startBtn) {
     if (accessToken) {
         startBtn.disabled = false;
@@ -95,9 +90,8 @@ let isSeeking = false;
 let currentDurationMs = 0;
 let progressInterval = null;
 
-// ===============================
-// TOKEN EXCHANGE (nur callback.html)
-// ===============================
+
+// Token
 async function exchangeCodeForToken(code) {
     const verifier = sessionStorage.getItem("code_verifier");
 
@@ -126,9 +120,8 @@ async function exchangeCodeForToken(code) {
     }
 }
 
-// ===============================
-// CALLBACK LOGIK
-// ===============================
+
+// callback
 (async () => {
     const isCallbackPage = window.location.pathname.endsWith("callback.html");
     if (!isCallbackPage) return;
@@ -149,9 +142,6 @@ async function exchangeCodeForToken(code) {
     }
 })();
 
-// ===============================
-// ✅ FIX: Transfer Playback (gegen 403 Restriction violated)
-// ===============================
 async function transferPlaybackToWebSDKDevice() {
     if (!deviceId || !accessToken) return false;
 
@@ -171,24 +161,21 @@ async function transferPlaybackToWebSDKDevice() {
         });
 
         if (res.status === 204) {
-            log("✅ Transfer Playback OK (204).");
+            log("Transfer Playback OK (204).");
             await new Promise((r) => setTimeout(r, 300));
             return true;
         }
 
         const text = await res.text();
-        log("⚠️ Transfer Playback Antwort:", res.status, text);
+        log("Transfer Playback Antwort:", res.status, text);
         await new Promise((r) => setTimeout(r, 300));
         return res.ok;
     } catch (e) {
-        log("❌ Transfer Playback Error:", e);
+        log("Transfer Playback Error:", e);
         return false;
     }
 }
 
-// ===============================
-// Auto: optional Emotion Buttons (falls auf index.html vorhanden)
-// ===============================
 function scheduleEmotionChange(emotion) {
     PLAYLISTS = getEffectivePlaylists();
     if (!PLAYLISTS[emotion]) {
@@ -206,9 +193,7 @@ document.querySelectorAll("[data-emotion]").forEach((btn) => {
     });
 });
 
-// ===============================
-// Progress Loop
-// ===============================
+
 function startProgressLoop() {
     if (!player) return;
     if (progressInterval) clearInterval(progressInterval);
@@ -235,7 +220,6 @@ function startProgressLoop() {
                 preEndHandledTrackId = null;
             }
 
-            // ✅ Auto only
             if (SELECTED_MODE === "auto") {
                 const remaining = duration - position;
                 if (remaining <= 1500 && remaining >= 0 && preEndHandledTrackId !== currentId) {
@@ -250,9 +234,7 @@ function startProgressLoop() {
     }, 500);
 }
 
-// ===============================
-// Auto: Emotion evaluieren & ggf. wechseln
-// ===============================
+// Emotion evaluieren und wechseln
 async function evaluateAndMaybeSwitchEmotion(reason) {
     if (SELECTED_MODE !== "auto") return false;
     if (isSwitchingPlaylist) return false;
@@ -294,16 +276,10 @@ async function evaluateAndMaybeSwitchEmotion(reason) {
     return true;
 }
 
-// ===============================
-// Spotify SDK Ready
-// ===============================
 window.onSpotifyWebPlaybackSDKReady = () => {
     log("Spotify Web Playback SDK geladen");
 };
 
-// ===============================
-// Player Init
-// ===============================
 async function initPlayerIfNeeded() {
     if (player || playerReady) return;
     if (!accessToken) return;
@@ -337,7 +313,6 @@ async function initPlayerIfNeeded() {
             if (volumeValueEl) volumeValueEl.textContent = volPercent + "%";
         } catch {}
 
-        // ✅ FIX: Transfer Playback
         await transferPlaybackToWebSDKDevice();
 
         // Shuffle (optional)
@@ -371,9 +346,6 @@ async function initPlayerIfNeeded() {
     await player.connect();
 }
 
-// ===============================
-// Start Button Toggle
-// ===============================
 startBtn?.addEventListener("click", async () => {
     if (!accessToken) return;
 
@@ -399,9 +371,7 @@ startBtn?.addEventListener("click", async () => {
     }
 });
 
-// ===============================
-// Now Playing UI / Timeline
-// ===============================
+
 function msToTime(ms) {
     if (!Number.isFinite(ms) || ms < 0) ms = 0;
     const totalSeconds = Math.floor(ms / 1000);
@@ -453,9 +423,7 @@ progressBar?.addEventListener("change", async (e) => {
     isSeeking = false;
 });
 
-// ===============================
-// Prev / Next
-// ===============================
+// Zurueck/Skip
 prevBtn?.addEventListener("click", async () => {
     if (!player) return;
     try { await player.previousTrack(); } catch (err) { log("Prev Fehler:", err); }
@@ -476,9 +444,7 @@ nextBtn?.addEventListener("click", async () => {
     }
 });
 
-// ===============================
-// Volume
-// ===============================
+// Lautstärke
 volumeSlider?.addEventListener("input", async (e) => {
     const val = Number(e.target.value);
     if (volumeValueEl) volumeValueEl.textContent = `${val}%`;
@@ -486,9 +452,7 @@ volumeSlider?.addEventListener("input", async (e) => {
     try { await player.setVolume(val / 100); } catch (err) { log("setVolume Fehler:", err); }
 });
 
-// ===============================
-// ✅ Playlist setzen (Manual & Auto) + 403 Retry
-// ===============================
+// Playlist setzen
 async function applyEmotionNow(emotion) {
     PLAYLISTS = getEffectivePlaylists();
     if (!PLAYLISTS[emotion]) {
@@ -499,7 +463,7 @@ async function applyEmotionNow(emotion) {
     currentEmotion = emotion;
     currentContextUri = PLAYLISTS[currentEmotion];
 
-    // NEU: Theme-Farbe anpassen
+    // Theme-Farbe anpassen
     if (typeof window.setEmotionTheme === 'function') {
         window.setEmotionTheme(currentEmotion);
     }
@@ -530,7 +494,7 @@ async function applyEmotionNow(emotion) {
     );
 
     if (res.status === 204) {
-        log("✅ Playlist gesetzt:", currentEmotion);
+        log(" Playlist gesetzt:", currentEmotion);
         return;
     }
 
@@ -538,7 +502,7 @@ async function applyEmotionNow(emotion) {
     log("Fehler beim Wechseln:", res.status, txt);
 
     if (res.status === 403) {
-        log("⚠️ 403 Restriction violated → Transfer + Retry...");
+        log("403 Restriction violated → Transfer + Retry...");
         await transferPlaybackToWebSDKDevice();
 
         const retry = await fetch(
@@ -553,16 +517,14 @@ async function applyEmotionNow(emotion) {
             }
         );
 
-        if (retry.status === 204) log("✅ Retry erfolgreich!");
-        else log("❌ Retry fehlgeschlagen:", retry.status, await retry.text());
+        if (retry.status === 204) log(" Retry erfolgreich!");
+        else log("Retry fehlgeschlagen:", retry.status, await retry.text());
     }
 }
 
 window.applyEmotionNow = applyEmotionNow;
 
-// ===============================
-// Start playback + 403 handling
-// ===============================
+// Start playback
 async function startPlayback() {
     if (!deviceId) {
         log("Kein deviceId.");
@@ -572,7 +534,6 @@ async function startPlayback() {
     PLAYLISTS = getEffectivePlaylists();
     currentContextUri = PLAYLISTS[currentEmotion];
 
-    // NEU: Theme-Farbe anpassen (beim ersten Start)
     if (typeof window.setEmotionTheme === 'function') {
         window.setEmotionTheme(currentEmotion);
     }
@@ -603,7 +564,7 @@ async function startPlayback() {
 
     if (res.status === 403) {
         log(
-            "⚠️ 403 Restriction violated: Bitte Spotify App (Handy/Desktop) kurz öffnen, " +
+            "⚠ 403 Restriction violated: Bitte Spotify App (Handy/Desktop) kurz öffnen, " +
             "ein Lied starten/pausieren und dann hier erneut versuchen."
         );
 
@@ -622,9 +583,9 @@ async function startPlayback() {
         );
 
         if (retry.status === 204) {
-            log("✅ Retry nach Transfer erfolgreich!");
+            log(" Retry nach Transfer erfolgreich!");
         } else {
-            log("❌ Retry fehlgeschlagen:", retry.status, await retry.text());
+            log(" Retry fehlgeschlagen:", retry.status, await retry.text());
         }
     }
 }
