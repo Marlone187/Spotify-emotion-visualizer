@@ -449,7 +449,6 @@ volumeSlider?.addEventListener("input", async (e) => {
     const val = Number(e.target.value);
     if (volumeValueEl) volumeValueEl.textContent = `${val}%`;
     if (!player) return;
-    try { await player.setVolume(val / 100); } catch (err) { log("setVolume Fehler:", err); }
 });
 
 // Playlist setzen
@@ -523,6 +522,33 @@ async function applyEmotionNow(emotion) {
 }
 
 window.applyEmotionNow = applyEmotionNow;
+
+//  Theme Buttons
+if (typeof window.setEmotionTheme === "function") {
+    const originalSetEmotionTheme = window.setEmotionTheme;
+
+    window.setEmotionTheme = async function (emotion) {
+
+        originalSetEmotionTheme(emotion);
+
+
+        try {
+            if (!accessToken) return;
+
+
+            if (!playerReady || !player) {
+                await initPlayerIfNeeded();
+                await applyEmotionNow(emotion);
+                return;
+            }
+
+
+            await applyEmotionNow(emotion);
+        } catch (e) {
+            log("Theme->Playlist Wechsel Fehler:", e);
+        }
+    };
+}
 
 // Start playback
 async function startPlayback() {
