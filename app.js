@@ -523,33 +523,6 @@ async function applyEmotionNow(emotion) {
 
 window.applyEmotionNow = applyEmotionNow;
 
-//  Theme Buttons
-if (typeof window.setEmotionTheme === "function") {
-    const originalSetEmotionTheme = window.setEmotionTheme;
-
-    window.setEmotionTheme = async function (emotion) {
-
-        originalSetEmotionTheme(emotion);
-
-
-        try {
-            if (!accessToken) return;
-
-
-            if (!playerReady || !player) {
-                await initPlayerIfNeeded();
-                await applyEmotionNow(emotion);
-                return;
-            }
-
-
-            await applyEmotionNow(emotion);
-        } catch (e) {
-            log("Theme->Playlist Wechsel Fehler:", e);
-        }
-    };
-}
-
 // Start playback
 async function startPlayback() {
     if (!deviceId) {
