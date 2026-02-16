@@ -449,6 +449,7 @@ volumeSlider?.addEventListener("input", async (e) => {
     const val = Number(e.target.value);
     if (volumeValueEl) volumeValueEl.textContent = `${val}%`;
     if (!player) return;
+    try { await player.setVolume(val / 100); } catch (err) { log("setVolume Fehler:", err); }
 });
 
 // Playlist setzen
